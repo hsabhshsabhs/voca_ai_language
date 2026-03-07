@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Voca AI — Твой личный репетитор</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .chat-scroll { height: calc(100vh - 260px); overflow-y: auto; scrollbar-width: none; }
+        .bubble { max-width: 80%; border-radius: 1.25rem; padding: 1rem 1.25rem; margin-bottom: 1rem; position: relative; }
+        .user { background: #2563eb; color: white; margin-left: auto; border-bottom-right-radius: 0.2rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+        .ai { background: white; color: #1e293b; border-bottom-left-radius: 0.2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .translation { color: #64748b; font-style: italic; font-size: 0.85rem; border-top: 1px solid #f1f5f9; margin-top: 0.75rem; padding-top: 0.5rem; }
+        
+        .explain-btn { width: 34px; height: 34px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; position: absolute; right: -45px; top: 8px; cursor: pointer; border: 2px solid #fef3c7; transition: all 0.2s; }
+        .user .explain-btn { background: #eff6ff; color: #1e40af; border-color: #dbeafe; left: -45px; right: auto; }
+        .explain-btn:hover { transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        
+        .modal-overlay { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(10px); z-index: 999; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        
+        .suggestion-card { min-height: 90px; display: flex; flex-direction: column; justify-content: center; background: white; border: 2px solid #e2e8f0; border-radius: 1.25rem; padding: 0.75rem 1.25rem; transition: all 0.2s; text-align: left; width: 100%; height: auto; }
+        .suggestion-card:hover { border-color: #3b82f6; background: #eff6ff; transform: translateY(-2px); }
+        .suggestion-card .en-text { font-size: 1.15rem; font-weight: 800; line-height: 1.25; color: #1e40af; }
+        .suggestion-card .ru-text { font-size: 0.9rem; color: #64748b; margin-top: 4px; }
+
+        .dot-pulse { display: inline-block; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .modal-body h3 { color: #1e40af; font-weight: 800; margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.1rem; border-bottom: 2px solid #eff6ff; padding-bottom: 0.25rem; }
+        .modal-body strong { color: #1e293b; background: #fef3c7; padding: 0 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const API_BASE = "http://127.0.0.1:8000";
+
+        function App() {
+            const [step, setStep] = useState('setup');
+            const [character, setCharacter] = useState('');
+            const [situation, setSituation] = useState('');
+            const [mode, setMode] = useState('with_suggestions');
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [suggestions, setSuggestions] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [explanation, setExplanation] = useState(null);
+            const [expLoading, setExpLoading] = useState(false);
+            const scrollRef = useRef(null);
+
+            useEffect(() => scrollRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, loading]);
+
+            const fetchStream = async (history) => {
+                setLoading(true); setSuggestions([]);
+                setMessages(prev => [...prev, { role: 'assistant', content: '', translation: '' }]);
+                try {
+                    const res = await fetch(`${API_BASE}/chat_stream`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ character, situation, history, mode })
+                    });
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullText = ""; let complete = "";
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        complete += decoder.decode(value);
+                        if (complete.includes("||META||")) {
+                            const [text, meta] = complete.split("||META||");
+                            fullText = text;
+                            try {
+                                const parsed = JSON.parse(meta);
+                                setMessages(prev => {
+                                    const next = [...prev];
+                                    next[next.length - 1] = { role: 'assistant', content: fullText, translation: parsed.translation };
+                                    if (parsed.user_correction && next.length >= 2) {
+                                        const uIdx = next.findLastIndex(m => m.role === 'user');
+                                        if (uIdx !== -1) next[uIdx].correction = parsed.user_correction;
+                                    }
+                                    return next;
+                                });
+                                setSuggestions(parsed.suggestions || []);
+                            } catch(e) {}
+                        } else {
+                            fullText = complete;
+                            setMessages(prev => {
+                                const next = [...prev];
+                                next[next.length - 1] = { role: 'assistant', content: fullText, translation: '' };
+                                return next;
+                            });
+                        }
+                    }
+                } catch (err) { console.error(err); } finally { setLoading(false); }
+            };
+
+            const handleExplain = async (text) => {
+                setExplanation(""); setExpLoading(true);
+                try {
+                    const res = await fetch(`${API_BASE}/explain`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: text })
+                    });
+                    const data = await res.json();
+                    setExplanation(data.explanation);
+                } catch (err) { setExplanation("Не удалось подключиться к репетитору."); } finally { setExpLoading(false); }
+            };
+
+            const downloadFile = () => {
+                if (!explanation) return;
+                const htmlContent = marked.parse(explanation);
+                const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Voca AI - Учебный конспект</title><style>body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; color: #334155; max-width: 800px; margin: 40px auto; padding: 20px; background: #f8fafc; }.container { background: white; padding: 40px; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }h1 { color: #2563eb; text-align: center; border-bottom: 4px solid #2563eb; padding-bottom: 15px; margin-bottom: 30px; }h3 { color: #1e40af; border-bottom: 2px solid #eff6ff; padding-bottom: 8px; margin-top: 30px; }strong { background: #fef3c7; padding: 2px 4px; border-radius: 4px; color: #1e293b; }ul { padding-left: 20px; }li { margin-bottom: 10px; }.footer { margin-top: 50px; text-align: center; font-size: 12px; color: #94a3b8; }</style></head><body><div class="container"><h1>Voca AI English Lesson</h1><p style="text-align: center; color: #64748b;">Дата: ${new Date().toLocaleDateString()}</p>${htmlContent}<div class="footer">Создано в приложении Voca AI</div></div></body></html>`;
+                const element = document.createElement("a");
+                const file = new Blob([fullHtml], {type: 'text/html'});
+                element.href = URL.createObjectURL(file);
+                element.download = `Voca_Lesson_${new Date().getTime()}.html`;
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            };
+
+            const sendMessage = (text) => {
+                if (!text.trim() || loading) return;
+                const newHistory = [...messages, { role: 'user', content: text }];
+                setMessages(newHistory); setInput('');
+                fetchStream(newHistory.filter(m => m.content));
+            };
+
+            if (step === 'setup') return (
+                <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+                    <div className="bg-white p-10 rounded-[3rem] shadow-2xl w-full max-w-xl border border-slate-100">
+                        <h1 className="text-5xl font-black mb-6 text-blue-600 tracking-tighter text-center uppercase italic">Voca AI</h1>
+                        <div className="bg-blue-50 p-6 rounded-3xl mb-8 border border-blue-100">
+                            <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2 text-lg">🚀 Как это работает?</h3>
+                            <ul className="text-sm text-blue-700 space-y-3 font-medium">
+                                <li>• <b>Любая роль:</b> Общайтесь с кем угодно — от Илона Маска до официанта.</li>
+                                <li>• <b>Разбор «?»</b> — Voca AI объяснит структуру предложения и правила построения фразы.</li>
+                                <li>• <b>Авто-коррекция:</b> Репетитор исправит твои ошибки и объяснит правила.</li>
+                                <li>• <b>Перевод:</b> Все сообщения дублируются на русский.</li>
+                            </ul>
+                        </div>
+                        <div className="space-y-5">
+                            <input className="w-full p-5 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold" placeholder="С кем общаемся?" value={character} onChange={e => setCharacter(e.target.value)} />
+                            <textarea className="w-full p-5 bg-slate-50 border rounded-2xl h-32 outline-none focus:ring-2 focus:ring-blue-500 font-bold" placeholder="Что за ситуация?" value={situation} onChange={e => setSituation(e.target.value)} />
+                            <button onClick={() => { if(character && situation) { setStep('chat'); fetchStream([]); } }} className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black text-xl hover:bg-blue-700 shadow-xl uppercase transition-all">Начать диалог</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="max-w-5xl mx-auto h-screen flex flex-col bg-white shadow-2xl relative overflow-hidden">
+                    <header className="p-6 border-b flex justify-between items-center bg-white z-10 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-2xl uppercase shadow-lg shadow-blue-100">V</div>
+                            <div>
+                                <h2 className="font-black text-slate-900 text-lg uppercase leading-none tracking-tight">Voca AI</h2>
+                                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1 truncate max-w-[250px]">{character} | {situation}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setMode(mode === 'with_suggestions' ? 'free_input' : 'with_suggestions')} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 ${mode === 'with_suggestions' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>ПОДСКАЗКИ: {mode === 'with_suggestions' ? 'ВКЛ' : 'ВЫКЛ'}</button>
+                            <button onClick={() => window.location.reload()} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg></button>
+                        </div>
+                    </header>
+                    <div className="chat-scroll flex-1 p-8 bg-slate-50 px-16">
+                        {messages.map((m, i) => (
+                            <div key={i} className={`bubble ${m.role === 'user' ? 'user' : 'ai'}`}>
+                                {m.content && (<div onClick={() => handleExplain(m.content)} className="explain-btn shadow-md" title="Спросить репетитора">?</div>)}
+                                <div className="font-semibold leading-relaxed whitespace-pre-wrap text-[1.05rem]">{m.content || <span className="dot-pulse">● ● ●</span>}</div>
+                                {m.translation && <div className="translation">{m.translation}</div>}
+                                {m.role === 'user' && m.correction && (
+                                    <div className="mt-3 bg-white/10 p-3 rounded-xl text-xs border border-white/20 text-white font-medium">
+                                        <div className="opacity-70 text-[9px] uppercase font-black mb-1">Репетитор советует:</div>
+                                        <div className="mb-1 font-bold text-[13px]">{m.correction.corrected}</div>
+                                        <div className="italic opacity-80 text-[11px]">{m.correction.explanation}</div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        <div ref={scrollRef} />
+                    </div>
+                    {!loading && mode === 'with_suggestions' && suggestions.length > 0 && (
+                        <div className="px-8 py-4 bg-white border-t">
+                            <div className="grid grid-cols-2 gap-4">
+                                {suggestions.slice(0, 2).map((s, i) => (
+                                    <button key={i} onClick={() => sendMessage(s.en)} className="suggestion-card group active:scale-95 transition-transform">
+                                        <div className="en-text">{s.en}</div>
+                                        <div className="ru-text">{s.ru}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <div className="p-8 bg-white border-t flex gap-4">
+                        <input className="flex-1 p-5 bg-slate-50 border-2 border-transparent rounded-[1.5rem] outline-none focus:border-blue-500 font-bold text-slate-800 shadow-inner" placeholder="Твой ответ..." value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendMessage(input)} disabled={loading} />
+                        <button onClick={() => sendMessage(input)} className="bg-blue-600 text-white px-10 rounded-[1.5rem] font-extrabold hover:bg-blue-700 transition shadow-lg shadow-blue-100 disabled:opacity-50 uppercase tracking-tighter" disabled={loading || !input.trim()}>Отправить</button>
+                    </div>
+                    {explanation !== null && (
+                        <div className="modal-overlay" onClick={() => setExplanation(null)}>
+                            <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-300 mx-2" onClick={e => e.stopPropagation()}>
+                                <div className="p-8 bg-amber-50 border-b border-amber-100 flex justify-between items-center text-amber-800">
+                                    <h3 className="font-black text-lg md:text-xl uppercase tracking-tighter">💡 Разбор от Voca AI</h3>
+                                    <button onClick={() => setExplanation(null)} className="p-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                                </div>
+                                <div className="p-10 max-h-[60vh] overflow-y-auto modal-body" dangerouslySetInnerHTML={{ __html: expLoading ? '<div class="flex justify-center py-10"><div class="dot-pulse text-4xl text-amber-400 font-bold">● ● ●</div></div>' : marked.parse(explanation) }}></div>
+                                <div className="p-8 bg-slate-50 flex justify-between gap-4">
+                                    <button onClick={downloadFile} className="px-8 py-4 bg-amber-100 border-2 border-amber-200 rounded-2xl font-black text-amber-700 uppercase text-xs">💾 Скачать конспект (HTML)</button>
+                                    <button onClick={() => setExplanation(null)} className="px-12 py-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-600 uppercase text-xs">Понятно!</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
