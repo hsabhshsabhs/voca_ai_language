@@ -154,7 +154,7 @@ async def chat_stream(req: ChatRequest, token: str):
                             yield chunk
                         except: continue
         
-t_res = await deepseek_call([{"role":"user", "content":f"Translate to Russian (text only): {full_en}"}])
+        t_res = await deepseek_call([{"role":"user", "content":f"Translate to Russian (text only): {full_en}"}])
         sug = []
         if req.mode == "with_suggestions":
             s_res = await deepseek_call([{"role":"user", "content":f'Context: {full_en}. Give 2 short reply options the user could say. Return JSON array of objects with "en" (English) and "ru" (Russian translation) keys. Example: [{{"en":"Sure","ru":"Конечно"}}]. Only JSON, no explanation.'}])
