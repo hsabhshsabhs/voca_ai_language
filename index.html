@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>lingvo.ai — Твой личный репетитор</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f1f5f9; }
+        body { font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+        .app-layout { display: flex; flex-direction: column; height: 100dvh; max-width: 800px; margin: 0 auto; background: #ffffff; position: relative; }
+        header { height: 56px; flex-shrink: 0; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; background: white; z-index: 20; }
+        .chat-zone { flex: 1; height: 70dvh; overflow-y: auto; background-color: #e7ebf0; padding: 1rem; scrollbar-width: none; }
+        .chat-zone::-webkit-scrollbar { display: none; }
+        .bottom-panel { height: 30dvh; display: flex; flex-direction: column; border-top: 1px solid #d1d9e0; background: white; flex-shrink: 0; }
+        .suggestions-area { flex: 1; overflow-y: auto; padding: 0.5rem; background: #ffffff; }
+        .input-bar { height: 60px; flex-shrink: 0; padding: 0 0.75rem; display: flex; gap: 0.5rem; border-top: 1px solid #f1f5f9; align-items: center; background: white; }
+        .bubble { max-width: 85%; border-radius: 1rem; padding: 0.6rem 0.9rem; margin-bottom: 0.75rem; position: relative; font-size: 1rem; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .user { background: #effdde; color: #000; margin-left: auto; border-bottom-right-radius: 0.2rem; }
+        .ai { background: white; color: #000; border-bottom-left-radius: 0.2rem; }
+        .show-trans-btn { color: #2481cc; font-size: 0.8rem; font-weight: 600; margin-top: 0.4rem; display: block; cursor: pointer; border-top: 1px solid #f1f1f1; padding-top: 0.3rem; }
+        .translation-text { color: #64748b; font-style: italic; font-size: 0.85rem; margin-top: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.3rem; }
+        .suggestion-card { background: #ffffff; border: 1px solid #d1d9e0; border-radius: 0.75rem; padding: 0.5rem 0.8rem; text-align: left; width: 100%; margin-bottom: 0.4rem; }
+        .suggestion-card .en { font-size: 1rem; font-weight: 800; color: #2481cc; line-height: 1.2; }
+        .suggestion-card .ru { font-size: 0.75rem; color: #64748b; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 999; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: white; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; border-radius: 2rem; padding: 1.5rem; position: relative; }
+        .mini-q-icon { display: inline-flex; width: 18px; height: 18px; background: #fffbeb; color: #d97706; border: 1px solid #fef3c7; border-radius: 50%; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; margin: 0 4px; vertical-align: middle; }
+        .dot-pulse { display: inline-block; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const API_BASE = ""; 
+
+        function AuthScreen({ onLogin }) {
+            const [mode, setMode] = useState("login");
+            const [username, setUsername] = useState("");
+            const [email, setEmail] = useState("");
+            const [password, setPassword] = useState("");
+            const [error, setError] = useState("");
+            const handleSubmit = async () => {
+                setError("");
+                try {
+                    let url = mode === "register" ? "/register" : "/token";
+                    let body = mode === "register" ? JSON.stringify({ username, email, password }) : new URLSearchParams({ username, password });
+                    const res = await fetch(`${API_BASE}${url}`, {
+                        method: "POST",
+                        headers: mode === "register" ? { "Content-Type": "application/json" } : { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: body
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || "Ошибка");
+                    if (mode === "register") { setMode("login"); alert("Готово! Войдите."); return; }
+                    localStorage.setItem('lingvo_token', data.access_token);
+                    onLogin(data.access_token, data.credits);
+                } catch (e) { setError(e.message); }
+            };
+            return (
+                <div className="h-full flex items-center justify-center p-4 bg-slate-50">
+                    <div className="bg-white p-6 rounded-3xl shadow-xl w-full max-w-sm border border-slate-100">
+                        <h1 className="text-3xl font-black mb-6 text-blue-600 text-center italic tracking-tighter uppercase">lingvo.ai</h1>
+                        <div className="space-y-3">
+                            <input className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Логин" value={username} onChange={e=>setUsername(e.target.value)} />
+                            {mode === "register" && <input className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />}
+                            <input className="w-full p-3 bg-slate-50 border rounded-xl" type="password" placeholder="Пароль" value={password} onChange={e=>setPassword(e.target.value)} />
+                            {error && <div className="text-red-500 text-xs text-center">{error}</div>}
+                            <button onClick={handleSubmit} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg uppercase">{mode === "login" ? "Войти" : "Создать"}</button>
+                            <div className="text-center text-xs text-slate-400 cursor-pointer" onClick={() => setMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "Нет аккаунта? Регистрация" : "Уже есть? Войти"}</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminPanel({ onClose }) {
+            const [pass, setPass] = useState("");
+            const [users, setUsers] = useState([]);
+            const [isLoaded, setIsLoaded] = useState(false);
+            const load = async () => {
+                const res = await fetch(`${API_BASE}/admin/users?admin_password=${pass}`);
+                if (res.ok) { setUsers(await res.json()); setIsLoaded(true); } else alert("Нет доступа");
+            };
+            const add = async (u) => {
+                await fetch(`${API_BASE}/admin/add_credits`, { method: "POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({admin_password:pass, username:u, amount:150}) });
+                load();
+            };
+            return (
+                <div className="modal-overlay" onClick={onClose}><div className="modal-content" onClick={e=>e.stopPropagation()}>
+                    <h2 className="font-black mb-4">АДМИНКА</h2>
+                    {!isLoaded ? (<div className="flex gap-2"><input className="flex-1 p-2 border rounded-lg" type="password" value={pass} onChange={e=>setPass(e.target.value)} /><button onClick={load} className="bg-black text-white px-4 rounded-lg">Вход</button></div>) : (
+                        <div className="space-y-2">{users.map((u,i)=>(<div key={i} className="flex justify-between text-xs border-b pb-1"><span>{u.username} ({u.credits}💎)</span><button onClick={()=>add(u.username)} className="text-blue-600 font-bold">+150</button></div>))}</div>
+                    )}
+                </div></div>
+            );
+        }
+
+        function ShopModal({ onClose }) {
+            const copy = () => { navigator.clipboard.writeText('+79090963833'); alert("Скопировано!"); };
+            return (
+                <div className="modal-overlay" onClick={onClose}><div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
+                    <h2 className="text-xl font-black mb-4">Пополнение 💎</h2>
+                    <div className="bg-slate-50 p-4 rounded-2xl mb-4">
+                        <div className="text-xs uppercase font-bold opacity-50 mb-1">СБП / Т-Банк</div>
+                        <div className="text-xl font-black text-blue-600 flex items-center justify-center gap-2">+79090963833 <button onClick={copy}>📋</button></div>
+                    </div>
+                    <p className="text-xs mb-4 text-slate-500">После оплаты отправьте чек в поддержку:</p>
+                    <a href="https://t.me/lingvoaisupport_bot" target="_blank" className="block bg-blue-600 text-white py-3 rounded-xl font-bold mb-2">Отправить чек</a>
+                    <button onClick={onClose} className="text-slate-400 text-sm font-bold">Закрыть</button>
+                </div></div>
+            );
+        }
+
+        function App() {
+            const [token, setToken] = useState(localStorage.getItem('lingvo_token'));
+            const [credits, setCredits] = useState(0);
+            const [isShopOpen, setIsShopOpen] = useState(false);
+            const [isAdminOpen, setIsAdminOpen] = useState(false);
+            const [vCount, setVCount] = useState(0);
+            const [step, setStep] = useState('setup');
+            const [character, setCharacter] = useState('');
+            const [situation, setSituation] = useState('');
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [suggestions, setSuggestions] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [visibleTranslations, setVisibleTranslations] = useState({});
+            const scrollRef = useRef(null);
+
+            useEffect(() => { if (token) fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)).catch(() => setToken(null)); }, [token]);
+            useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, suggestions]);
+
+            if (!token) return <AuthScreen onLogin={(t, c) => { setToken(t); setCredits(c); }} />;
+
+            const handleTriggerAI = async (history) => {
+                setLoading(true); setSuggestions([]);
+                setMessages(prev => [...prev, { role: 'assistant', content: '', translation: '', id: Date.now() }]);
+                try {
+                    const response = await fetch(`${API_BASE}/chat_stream?token=${token}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ character, situation, history: history.map(m=>({role:m.role,content:m.content})) })
+                    });
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullText = "";
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        if (chunk.includes("||META||")) {
+                            const [text, meta] = chunk.split("||META||");
+                            fullText += text;
+                            try {
+                                const parsed = JSON.parse(meta);
+                                setMessages(prev => {
+                                    const next = [...prev];
+                                    next[next.length - 1] = { role: 'assistant', content: fullText, translation: parsed.translation, id: Date.now() };
+                                    return next;
+                                });
+                                setSuggestions(parsed.suggestions || []);
+                                setCredits(c => c - 1);
+                            } catch(e) {}
+                            break;
+                        } else {
+                            fullText += chunk;
+                            setMessages(prev => { const next = [...prev]; next[next.length - 1].content = fullText; return next; });
+                        }
+                    }
+                } catch (err) { alert("Ошибка!"); } finally { setLoading(false); }
+            };
+
+            const sendMessage = (text) => {
+                if (!text.trim() || loading) return;
+                const next = [...messages.filter(m=>m.content).map(m=>({role:m.role,content:m.content})), { role: 'user', content: text }];
+                setMessages(next); setInput(''); handleTriggerAI(next);
+            };
+
+            if (step === 'setup') return (
+                <div className="h-full flex items-center justify-center p-4 bg-slate-50 overflow-y-auto">
+                    <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl w-full max-w-xl border border-slate-100">
+                        <div className="flex justify-between items-center mb-4"><div onClick={()=>setVCount(v=>v+1)} className="font-bold text-blue-600 text-sm cursor-pointer" onClick={()=>{ if(vCount>=4){setIsAdminOpen(true); setVCount(0)} else setVCount(vCount+1) }}>L</div><div className="font-bold text-blue-600 text-sm cursor-pointer" onClick={()=>setIsShopOpen(true)}>Баланс: {credits} 💎</div></div>
+                        <h1 className="text-4xl font-black mb-4 text-blue-600 text-center italic tracking-tighter uppercase">lingvo.ai</h1>
+                        <div className="bg-blue-50 p-4 rounded-2xl mb-6 text-xs text-blue-700 font-medium">
+                            <h3 className="font-bold mb-2 italic">🚀 Как это работает?</h3>
+                            <ul className="space-y-1"><li>• Выбери роль и ситуацию.</li><li>• Разбор <span className="mini-q-icon">?</span> объяснит правила.</li><li>• Ошибки будут исправлены ИИ.</li></ul>
+                        </div>
+                        <div className="space-y-4">
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Собеседник</label><input className="w-full p-3 bg-slate-50 border rounded-xl font-bold text-sm" placeholder="Напр: Бариста" value={character} onChange={e => setCharacter(e.target.value)} /></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Ситуация</label><input className="w-full p-3 bg-slate-50 border rounded-xl font-bold text-sm" placeholder="Напр: Заказ латте" value={situation} onChange={e => setSituation(e.target.value)} /></div>
+                            <button onClick={() => { if(character && situation) { setStep('chat'); handleTriggerAI([]); } }} className="w-full bg-blue-600 text-white py-4 rounded-[1.5rem] font-black text-lg shadow-xl uppercase">Начать</button>
+                        </div>
+                        <div className="text-center mt-4 text-[10px] text-slate-400 cursor-pointer" onClick={() => { localStorage.removeItem('lingvo_token'); setToken(null); }}>Выйти</div>
+                        {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} />}{isAdminOpen && <AdminPanel onClose={()=>setIsAdminOpen(false)} />}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="app-layout">
+                    <header><h2 className="font-black text-blue-600 text-lg uppercase" onClick={()=>{ if(vCount>=4){setIsAdminOpen(true); setVCount(0)} else setVCount(vCount+1) }}>lingvo.ai</h2><div onClick={()=>setIsShopOpen(true)} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg cursor-pointer">{credits} 💎</div></header>
+                    <main className="chat-zone">
+                        {messages.map((m, i) => (
+                            <div key={i} className={`bubble ${m.role === 'user' ? 'user' : 'ai'}`}>
+                                <div className="font-medium whitespace-pre-wrap">{m.content || <span className="dot-pulse">● ● ●</span>}</div>
+                                {m.role === 'assistant' && m.translation && (
+                                    <div>{!visibleTranslations[m.id] ? (<div onClick={() => setVisibleTranslations(v=>({...v, [m.id]:true}))} className="show-trans-btn">Показать перевод</div>) : (<div className="translation-text">{m.translation}</div>)}</div>
+                                )}
+                            </div>
+                        ))}
+                        <div ref={scrollRef} />
+                    </main>
+                    <footer className="bottom-panel">
+                        <div className="suggestions-area">
+                            {!loading && suggestions.map((s, i) => (<button key={i} onClick={() => sendMessage(s.en)} className="suggestion-card"><div className="en">{s.en}</div><div className="ru">{s.ru}</div></button>))}
+                        </div>
+                        <div className="input-bar">
+                            <input className="flex-1 p-3 bg-slate-50 border rounded-xl outline-none font-bold text-sm" placeholder="Ответь..." value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendMessage(input)} />
+                            <button onClick={() => sendMessage(input)} className="bg-blue-600 text-white w-10 h-10 rounded-xl font-black shadow-lg">⮕</button>
+                        </div>
+                    </footer>
+                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} />}{isAdminOpen && <AdminPanel onClose={()=>setIsAdminOpen(false)} />}
+                </div>
+            );
+        }
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
