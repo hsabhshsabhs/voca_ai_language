@@ -80,6 +80,9 @@ class UserCreate(BaseModel):
     email: str
     password: str
 
+class ExplainRequest(BaseModel):
+    text: str
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     try:
@@ -132,6 +135,18 @@ async def deepseek_call(messages: List[dict]):
                 return data['choices'][0]['message']['content'].strip()
     except: return ""
 
+@app.post("/explain")
+async def explain(req: ExplainRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.credits < 2: raise HTTPException(status_code=402, detail="Баланс пуст")
+    user.credits -= 2
+    db.commit()
+    prompt = (
+        f"Ты репетитор. Объясни структуру предложения и правила построения фразы: '{req.text}'. "
+        "Пиши на русском, используй Markdown."
+    )
+    res = await deepseek_call([{"role": "user", "content": prompt}])
+    return {"explanation": res or "Не удалось получить объяснение."}
+
 @app.post("/chat_stream")
 async def chat_stream(req: dict, token: str):
     db = SessionLocal()
@@ -152,6 +167,12 @@ async def chat_stream(req: dict, token: str):
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
         history = [{"role": "system", "content": f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. Natural short English."}]
         history.extend([{"role": m["role"], "content": m["content"]} for m in req['history'] if m.get("content")])
+        
+        user_msg = ""
+        if req['history']:
+            user_msgs = [m["content"] for m in req['history'] if m["role"] == "user"]
+            if user_msgs: user_msg = user_msgs[-1]
+
         if len(history) == 1: history.append({"role": "user", "content": "Start conversation."})
         
         async with aiohttp.ClientSession() as session:
@@ -168,15 +189,25 @@ async def chat_stream(req: dict, token: str):
         # Получаем данные
         t_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Translate to Russian: {full_en}"}]))
         s_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Context: {full_en}. Return JSON array with 2 short natural English replies + Russian translations: [{{'en':'...', 'ru':'...'}}]."}]))
+        c_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Check this English sentence for errors: '{user_msg}'. If there are errors, return JSON {{'corrected':'...', 'explanation':'...'}} in Russian. If no errors, return NONE."}])) if user_msg else None
         
         trans, sug_raw = await asyncio.gather(t_task, s_task)
+        corr_raw = await c_task if c_task else "NONE"
+
         sug = []
         try: 
             match = re.search(r'\[.*\]', sug_raw, re.DOTALL)
             if match: sug = json.loads(match.group(0))[:2]
         except: pass
+
+        corr_data = None
+        if corr_raw and "NONE" not in str(corr_raw):
+            try:
+                match = re.search(r'\{.*\}', str(corr_raw), re.DOTALL)
+                if match: corr_data = json.loads(match.group(0))
+            except: pass
         
-        yield "||META||" + json.dumps({"translation": trans, "suggestions": sug})
+        yield "||META||" + json.dumps({"translation": trans, "suggestions": sug, "user_correction": corr_data})
 
     return StreamingResponse(gen(), media_type="text/plain")
 
