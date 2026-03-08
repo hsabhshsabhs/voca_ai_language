@@ -93,7 +93,7 @@ async def index():
         with open("index.html", "r", encoding="utf-8") as f:
             return f.read()
     except:
-        return "<h1>lingvo.ai</h1><p>Файл index.html не найден в корне репозитория.</p>"
+        return "<h1>lingvo.ai</h1><p>index.html not found</p>"
 
 # --- API ENDPOINTS ---
 @app.get("/health")
@@ -155,7 +155,7 @@ async def chat_stream(req: ChatRequest, token: str):
                         except: continue
         
         t_res = await deepseek_call([{"role":"user", "content":f"Translate to Russian (text only): {full_en}"}])
-        s_res = await deepseek_call([{"role":"user", "content":f"Context: {full_en}. Give 2 short replies. JSON array."}])
+        s_res = await deepseek_call([{"role":"user", "content":f"Context: {full_en}. Give 2 short reply options the user could say. Return JSON array of objects with 'en' (English) and 'ru' (Russian translation) keys. Example: [{\"en\":\"Sure, I'd like that\",\"ru\":\"Конечно, я бы хотел\"}]. Only JSON, no explanation."}])
         sug = []
         try: match = re.search(r'\[.*\]', s_res, re.DOTALL); sug = json.loads(match.group(0))[:2]
         except: pass

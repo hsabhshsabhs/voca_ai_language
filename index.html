@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Voca AI - Your Personal Language Tutor</title>
+    <title>lingvo.ai - Твой AI репетитор по языкам</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -540,7 +540,7 @@
                     if (mode === "register") { 
                         setMode("login"); 
                         setError("");
-                        alert("Account created! Please sign in."); 
+                        alert("Аккаунт создан! Теперь войдите."); 
                         return; 
                     }
                     localStorage.setItem('lingvo_token', data.access_token);
@@ -560,18 +560,18 @@
                             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-purple-500 mb-4 glow-accent">
                                 <Icons.Sparkles />
                             </div>
-                            <h1 className="text-3xl font-display font-bold gradient-text">Voca AI</h1>
-                            <p className="text-muted text-sm mt-2">Your personal language tutor</p>
+                            <h1 className="text-3xl font-display font-bold gradient-text">lingvo.ai</h1>
+                            <p className="text-muted text-sm mt-2">Твой персональный AI репетитор</p>
                         </div>
 
                         {/* Form */}
                         <div className="glass-card p-6">
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Username</label>
+                                    <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Логин</label>
                                     <input 
                                         className="input-field" 
-                                        placeholder="Enter username" 
+                                        placeholder="Введите логин" 
                                         value={username} 
                                         onChange={e => setUsername(e.target.value)} 
                                     />
@@ -582,7 +582,7 @@
                                         <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Email</label>
                                         <input 
                                             className="input-field" 
-                                            placeholder="Enter email" 
+                                            placeholder="Введите email" 
                                             type="email"
                                             value={email} 
                                             onChange={e => setEmail(e.target.value)} 
@@ -591,11 +591,11 @@
                                 )}
                                 
                                 <div>
-                                    <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Password</label>
+                                    <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Пароль</label>
                                     <input 
                                         className="input-field" 
                                         type="password" 
-                                        placeholder="Enter password" 
+                                        placeholder="Введите пароль" 
                                         value={password} 
                                         onChange={e => setPassword(e.target.value)}
                                         onKeyPress={e => e.key === 'Enter' && handleSubmit()}
@@ -619,7 +619,7 @@
                                         </div>
                                     ) : (
                                         <>
-                                            {mode === "login" ? "Sign In" : "Create Account"}
+                                            {mode === "login" ? "Войти" : "Создать аккаунт"}
                                             <Icons.ArrowRight />
                                         </>
                                     )}
@@ -632,9 +632,9 @@
                                     className="w-full text-center text-sm text-muted hover:text-foreground transition-colors"
                                 >
                                     {mode === "login" ? (
-                                        <>New here? <span className="text-accent font-medium">Create account</span> (+50 credits)</>
+                                        <>Нет аккаунта? <span className="text-accent font-medium">Создать</span> (+50 кредитов)</>
                                     ) : (
-                                        <>Already have an account? <span className="text-accent font-medium">Sign in</span></>
+                                        <>Уже есть аккаунт? <span className="text-accent font-medium">Войти</span></>
                                     )}
                                 </button>
                             </div>
@@ -655,7 +655,7 @@
                     setUsers(await res.json()); 
                     setIsLoaded(true); 
                 } else {
-                    alert("Access denied");
+                    alert("Доступ запрещен");
                 }
             };
 
@@ -672,7 +672,7 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-display font-bold">Admin Panel</h2>
+                            <h2 className="text-lg font-display font-bold">Админ панель</h2>
                             <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-lg transition-colors">
                                 <Icons.X />
                             </button>
@@ -683,7 +683,7 @@
                                 <input 
                                     className="input-field flex-1" 
                                     type="password" 
-                                    placeholder="Admin password"
+                                    placeholder="Пароль админа"
                                     value={pass} 
                                     onChange={e => setPass(e.target.value)} 
                                 />
@@ -695,7 +695,7 @@
                                     <div key={i} className="flex justify-between items-center p-3 bg-surface rounded-lg border border-border">
                                         <div>
                                             <span className="font-medium">{u.username}</span>
-                                            <span className="text-muted ml-2">{u.credits} credits</span>
+                                            <span className="text-muted ml-2">{u.credits} кредитов</span>
                                         </div>
                                         <button 
                                             onClick={() => add(u.username)} 
@@ -725,14 +725,14 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content text-center" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-display font-bold">Top Up Credits</h2>
+                            <h2 className="text-lg font-display font-bold">Пополнить кредиты</h2>
                             <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-lg transition-colors">
                                 <Icons.X />
                             </button>
                         </div>
 
                         <div className="bg-surface p-5 rounded-xl border border-border mb-6">
-                            <div className="text-xs uppercase font-medium text-muted mb-2 tracking-wider">Payment Number</div>
+                            <div className="text-xs uppercase font-medium text-muted mb-2 tracking-wider">Номер для оплаты</div>
                             <div className="flex items-center justify-center gap-3">
                                 <span className="text-xl font-bold text-foreground">+79090963833</span>
                                 <button 
@@ -740,7 +740,7 @@
                                     className="p-2 bg-surfaceHover hover:bg-borderLight rounded-lg transition-colors"
                                 >
                                     {copied ? (
-                                        <span className="text-success text-xs font-medium">Copied!</span>
+                                        <span className="text-success text-xs font-medium">Скопировано!</span>
                                     ) : (
                                         <Icons.Copy />
                                     )}
@@ -748,14 +748,14 @@
                             </div>
                         </div>
 
-                        <p className="text-sm text-muted mb-6">After payment, send the receipt to support:</p>
+                        <p className="text-sm text-muted mb-6">После оплаты отправьте чек в поддержку:</p>
                         
                         <a 
                             href="https://t.me/lingvoaisupport_bot" 
                             target="_blank" 
                             className="btn-primary inline-flex items-center justify-center gap-2 w-full mb-4"
                         >
-                            Send Receipt via Telegram
+                            Отправить чек в Telegram
                             <Icons.ArrowRight />
                         </a>
                     </div>
@@ -776,10 +776,10 @@
             };
 
             const presets = [
-                { char: "Barista", sit: "Ordering coffee", icon: "coffee" },
-                { char: "Doctor", sit: "Medical appointment", icon: "medical" },
-                { char: "Tour Guide", sit: "Visiting a museum", icon: "map" },
-                { char: "Shop Assistant", sit: "Buying clothes", icon: "shopping" },
+                { char: "Barista", sit: "Ordering coffee", label: "Бариста", labelSit: "Заказ кофе" },
+                { char: "Doctor", sit: "Medical appointment", label: "Врач", labelSit: "Прием у врача" },
+                { char: "Tour Guide", sit: "Visiting a museum", label: "Гид", labelSit: "Экскурсия в музее" },
+                { char: "Shop Assistant", sit: "Buying clothes", label: "Продавец", labelSit: "Покупка одежды" },
             ];
 
             return (
@@ -788,7 +788,7 @@
                         {/* Header */}
                         <div className="flex items-center justify-between mb-8">
                             <div onClick={handleSecretClick} className="cursor-pointer">
-                                <h1 className="text-2xl font-display font-bold gradient-text">Voca AI</h1>
+                                <h1 className="text-2xl font-display font-bold gradient-text">lingvo.ai</h1>
                             </div>
                             <div className="flex items-center gap-3">
                                 <div onClick={onShopOpen} className="credits-badge">
@@ -805,11 +805,11 @@
                                     <Icons.Sparkles />
                                 </div>
                                 <div>
-                                    <h2 className="font-semibold mb-1">How it works</h2>
+                                    <h2 className="font-semibold mb-1">Как это работает</h2>
                                     <ul className="text-sm text-muted space-y-1">
-                                        <li>Choose a role and scenario to practice</li>
-                                        <li>AI will correct your mistakes and give tips</li>
-                                        <li>Tap to reveal translations when needed</li>
+                                        <li>Выберите роль и сценарий для практики</li>
+                                        <li>AI исправит ошибки и даст подсказки</li>
+                                        <li>Нажмите, чтобы увидеть перевод</li>
                                     </ul>
                                 </div>
                             </div>
@@ -817,7 +817,7 @@
 
                         {/* Quick Presets */}
                         <div className="mb-6">
-                            <label className="block text-xs font-medium text-muted mb-3 uppercase tracking-wider">Quick Start</label>
+                            <label className="block text-xs font-medium text-muted mb-3 uppercase tracking-wider">Быстрый старт</label>
                             <div className="grid grid-cols-2 gap-3">
                                 {presets.map((p, i) => (
                                     <button
@@ -825,8 +825,8 @@
                                         onClick={() => { setCharacter(p.char); setSituation(p.sit); }}
                                         className={`feature-card text-left ${character === p.char && situation === p.sit ? 'border-accent bg-accent/5' : ''}`}
                                     >
-                                        <div className="font-medium text-sm">{p.char}</div>
-                                        <div className="text-xs text-muted">{p.sit}</div>
+                                        <div className="font-medium text-sm">{p.label}</div>
+                                        <div className="text-xs text-muted">{p.labelSit}</div>
                                     </button>
                                 ))}
                             </div>
@@ -835,19 +835,19 @@
                         {/* Custom Setup */}
                         <div className="space-y-4 mb-6">
                             <div>
-                                <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Your Partner</label>
+                                <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Собеседник</label>
                                 <input 
                                     className="input-field" 
-                                    placeholder="e.g. Hotel Receptionist" 
+                                    placeholder="Например: Hotel Receptionist" 
                                     value={character} 
                                     onChange={e => setCharacter(e.target.value)} 
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Scenario</label>
+                                <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Сценарий</label>
                                 <input 
                                     className="input-field" 
-                                    placeholder="e.g. Checking into a hotel" 
+                                    placeholder="Например: Checking into a hotel" 
                                     value={situation} 
                                     onChange={e => setSituation(e.target.value)} 
                                 />
@@ -860,7 +860,7 @@
                             disabled={!character || !situation}
                             className="btn-primary flex items-center justify-center gap-2"
                         >
-                            Start Conversation
+                            Начать диалог
                             <Icons.ArrowRight />
                         </button>
 
@@ -870,7 +870,7 @@
                             className="mt-6 flex items-center justify-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
                         >
                             <Icons.LogOut />
-                            Sign out
+                            Выйти
                         </button>
                     </div>
                 </div>
@@ -895,7 +895,7 @@
                             >
                                 <Icons.Back />
                             </button>
-                            <h2 className="font-display font-bold gradient-text">Voca AI</h2>
+                            <h2 className="font-display font-bold gradient-text">lingvo.ai</h2>
                         </div>
                         <div onClick={onShopOpen} className="credits-badge">
                             <Icons.Gem />
@@ -909,7 +909,7 @@
                             <div className="flex items-center justify-center h-full">
                                 <div className="text-center text-muted">
                                     <Icons.MessageCircle />
-                                    <p className="mt-2 text-sm">Starting conversation...</p>
+                                    <p className="mt-2 text-sm">Начинаем диалог...</p>
                                 </div>
                             </div>
                         )}
@@ -932,7 +932,7 @@
                                                 className="show-trans-btn"
                                             >
                                                 <Icons.Eye />
-                                                Show translation
+                                                Показать перевод
                                             </button>
                                         ) : (
                                             <div className="translation-text">{m.translation}</div>
@@ -966,7 +966,7 @@
                         <div className="input-bar">
                             <input 
                                 className="input-field" 
-                                placeholder="Type your reply..." 
+                                placeholder="Напишите ответ..." 
                                 value={input} 
                                 onChange={e => setInput(e.target.value)} 
                                 onKeyPress={e => e.key === 'Enter' && onSend(input)}
@@ -1059,7 +1059,7 @@
                         }
                     }
                 } catch (err) { 
-                    alert("Error occurred!"); 
+                    alert("Произошла ошибка!"); 
                 } finally { 
                     setLoading(false); 
                 }
