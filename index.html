@@ -3,43 +3,514 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>lingvo.ai — Твой личный репетитор</title>
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Voca AI - Your Personal Language Tutor</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#0a0a0f',
+                        surface: '#111118',
+                        surfaceHover: '#1a1a24',
+                        border: '#1f1f2e',
+                        borderLight: '#2a2a3e',
+                        foreground: '#f4f4f5',
+                        muted: '#71717a',
+                        accent: '#6366f1',
+                        accentLight: '#818cf8',
+                        accentDark: '#4f46e5',
+                        success: '#22c55e',
+                        successBg: 'rgba(34, 197, 94, 0.1)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f1f5f9; }
-        body { font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
-        .app-layout { display: flex; flex-direction: column; height: 100dvh; max-width: 800px; margin: 0 auto; background: #ffffff; position: relative; }
-        header { height: 56px; flex-shrink: 0; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; background: white; z-index: 20; }
-        .chat-zone { flex: 1; height: 70dvh; overflow-y: auto; background-color: #e7ebf0; padding: 1rem; scrollbar-width: none; }
-        .chat-zone::-webkit-scrollbar { display: none; }
-        .bottom-panel { height: 30dvh; display: flex; flex-direction: column; border-top: 1px solid #d1d9e0; background: white; flex-shrink: 0; }
-        .suggestions-area { flex: 1; overflow-y: auto; padding: 0.5rem; background: #ffffff; }
-        .input-bar { height: 60px; flex-shrink: 0; padding: 0 0.75rem; display: flex; gap: 0.5rem; border-top: 1px solid #f1f5f9; align-items: center; background: white; }
-        .bubble { max-width: 85%; border-radius: 1rem; padding: 0.6rem 0.9rem; margin-bottom: 0.75rem; position: relative; font-size: 1rem; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .user { background: #effdde; color: #000; margin-left: auto; border-bottom-right-radius: 0.2rem; }
-        .ai { background: white; color: #000; border-bottom-left-radius: 0.2rem; }
-        .show-trans-btn { color: #2481cc; font-size: 0.8rem; font-weight: 600; margin-top: 0.4rem; display: block; cursor: pointer; border-top: 1px solid #f1f1f1; padding-top: 0.3rem; }
-        .translation-text { color: #64748b; font-style: italic; font-size: 0.85rem; margin-top: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.3rem; }
-        .suggestion-card { background: #ffffff; border: 1px solid #d1d9e0; border-radius: 0.75rem; padding: 0.5rem 0.8rem; text-align: left; width: 100%; margin-bottom: 0.4rem; }
-        .suggestion-card .en { font-size: 1.05rem; font-weight: 800; color: #2481cc; line-height: 1.2; }
-        .suggestion-card .ru { font-size: 0.75rem; color: #64748b; }
-        .modal-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 999; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-        .modal-content { background: white; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; border-radius: 2rem; padding: 1.5rem; }
-        .mini-q-icon { display: inline-flex; width: 18px; height: 18px; background: #fffbeb; color: #d97706; border: 1px solid #fef3c7; border-radius: 50%; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; margin: 0 4px; vertical-align: middle; }
-        .dot-pulse { display: inline-block; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        * { box-sizing: border-box; }
+        html, body, #root { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background-color: #0a0a0f; 
+            color: #f4f4f5;
+        }
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3a3a4e; }
+        
+        /* App layout */
+        .app-layout { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100dvh; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #0a0a0f; 
+            position: relative;
+            border-left: 1px solid #1f1f2e;
+            border-right: 1px solid #1f1f2e;
+        }
+        
+        @media (max-width: 600px) {
+            .app-layout { border: none; }
+        }
+        
+        /* Header */
+        .app-header { 
+            height: 60px; 
+            flex-shrink: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 1rem; 
+            background: linear-gradient(180deg, #111118 0%, #0a0a0f 100%);
+            border-bottom: 1px solid #1f1f2e;
+            z-index: 20;
+            backdrop-filter: blur(20px);
+        }
+        
+        /* Chat zone */
+        .chat-zone { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 1rem;
+            background: radial-gradient(ellipse at top, #111118 0%, #0a0a0f 50%);
+            scroll-behavior: smooth;
+        }
+        
+        /* Bottom panel */
+        .bottom-panel { 
+            display: flex; 
+            flex-direction: column; 
+            border-top: 1px solid #1f1f2e;
+            background: #111118;
+            flex-shrink: 0;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        
+        .suggestions-area { 
+            max-height: 140px;
+            overflow-y: auto; 
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .input-bar { 
+            min-height: 64px;
+            padding: 0.75rem 1rem; 
+            display: flex; 
+            gap: 0.75rem; 
+            align-items: center; 
+            background: #0a0a0f;
+            border-top: 1px solid #1f1f2e;
+        }
+        
+        /* Message bubbles */
+        .bubble { 
+            max-width: 85%; 
+            border-radius: 1.25rem; 
+            padding: 0.875rem 1rem; 
+            margin-bottom: 0.75rem; 
+            position: relative; 
+            font-size: 0.9375rem; 
+            line-height: 1.5;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .bubble.user { 
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white; 
+            margin-left: auto; 
+            border-bottom-right-radius: 0.375rem;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .bubble.ai { 
+            background: #1a1a24;
+            color: #f4f4f5; 
+            border-bottom-left-radius: 0.375rem;
+            border: 1px solid #2a2a3e;
+        }
+        
+        /* Suggestion cards */
+        .suggestion-card { 
+            background: #1a1a24;
+            border: 1px solid #2a2a3e;
+            border-radius: 1rem; 
+            padding: 0.75rem 1rem;
+            text-align: left; 
+            width: 100%;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .suggestion-card:hover {
+            background: #222230;
+            border-color: #6366f1;
+            transform: translateY(-1px);
+        }
+        
+        .suggestion-card:active {
+            transform: scale(0.98);
+        }
+        
+        .suggestion-card .en { 
+            font-size: 0.9375rem; 
+            font-weight: 600; 
+            color: #f4f4f5;
+            margin-bottom: 0.25rem;
+        }
+        
+        .suggestion-card .ru { 
+            font-size: 0.8125rem; 
+            color: #71717a;
+        }
+        
+        /* Modal */
+        .modal-overlay { 
+            background: rgba(0, 0, 0, 0.8); 
+            backdrop-filter: blur(8px); 
+            z-index: 999; 
+            position: fixed; 
+            inset: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 1rem;
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content { 
+            background: #111118;
+            width: 100%; 
+            max-width: 420px; 
+            max-height: 85vh; 
+            overflow-y: auto; 
+            border-radius: 1.5rem; 
+            padding: 1.5rem;
+            border: 1px solid #2a2a3e;
+            animation: modalSlide 0.3s ease-out;
+        }
+        
+        @keyframes modalSlide {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        /* Translation toggle */
+        .show-trans-btn { 
+            color: #818cf8; 
+            font-size: 0.8125rem; 
+            font-weight: 500; 
+            margin-top: 0.5rem; 
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .show-trans-btn:hover { color: #a5b4fc; }
+        
+        .translation-text { 
+            color: #71717a; 
+            font-size: 0.875rem; 
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #2a2a3e;
+        }
+        
+        /* Loading dots */
+        .dot-pulse {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .dot-pulse span {
+            width: 8px;
+            height: 8px;
+            background: #6366f1;
+            border-radius: 50%;
+            animation: dotPulse 1.4s ease-in-out infinite;
+        }
+        
+        .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+        .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes dotPulse {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Glow effect */
+        .glow-accent {
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.15);
+        }
+        
+        /* Input styling */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: #1a1a24;
+            border: 1px solid #2a2a3e;
+            border-radius: 0.875rem;
+            color: #f4f4f5;
+            font-size: 0.9375rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        
+        .input-field:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .input-field::placeholder {
+            color: #52525b;
+        }
+        
+        /* Primary button */
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            border: none;
+            border-radius: 0.875rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 30px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Secondary button */
+        .btn-secondary {
+            padding: 0.75rem 1rem;
+            background: #1a1a24;
+            border: 1px solid #2a2a3e;
+            border-radius: 0.75rem;
+            color: #f4f4f5;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            background: #222230;
+            border-color: #3a3a4e;
+        }
+        
+        /* Glass card */
+        .glass-card {
+            background: rgba(26, 26, 36, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid #2a2a3e;
+            border-radius: 1.5rem;
+        }
+        
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #6366f1 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Credits badge */
+        .credits-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #a5b4fc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .credits-badge:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+        
+        /* Feature card */
+        .feature-card {
+            background: #111118;
+            border: 1px solid #1f1f2e;
+            border-radius: 1rem;
+            padding: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .feature-card:hover {
+            border-color: #2a2a3e;
+            background: #1a1a24;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            .bubble { max-width: 90%; }
+            .suggestions-area { max-height: 120px; }
+        }
+        
+        /* Safe area for notched devices */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .app-header {
+                padding-top: env(safe-area-inset-top);
+                height: calc(60px + env(safe-area-inset-top));
+            }
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        const API_BASE = ""; 
+        const API_BASE = "";
+
+        // Icons
+        const Icons = {
+            Send: () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            ),
+            Eye: () => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            ),
+            Sparkles: () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+                    <path d="M5 3v4"></path>
+                    <path d="M19 17v4"></path>
+                    <path d="M3 5h4"></path>
+                    <path d="M17 19h4"></path>
+                </svg>
+            ),
+            Gem: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 3h12l4 6-10 13L2 9Z"></path>
+                    <path d="m12 22 4-13-3-6"></path>
+                    <path d="m12 22-4-13 3-6"></path>
+                    <path d="M2 9h20"></path>
+                </svg>
+            ),
+            ArrowRight: () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            ),
+            LogOut: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            ),
+            MessageCircle: () => (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"></path>
+                </svg>
+            ),
+            User: () => (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            ),
+            Globe: () => (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+            ),
+            Zap: () => (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+            ),
+            Copy: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            ),
+            X: () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            ),
+            Back: () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            ),
+        };
 
         function AuthScreen({ onLogin }) {
             const [mode, setMode] = useState("login");
@@ -47,34 +518,126 @@
             const [email, setEmail] = useState("");
             const [password, setPassword] = useState("");
             const [error, setError] = useState("");
+            const [loading, setLoading] = useState(false);
+
             const handleSubmit = async () => {
                 setError("");
+                setLoading(true);
                 try {
                     let url = mode === "register" ? "/register" : "/token";
-                    let body = mode === "register" ? JSON.stringify({ username, email, password }) : new URLSearchParams({ username, password });
+                    let body = mode === "register" 
+                        ? JSON.stringify({ username, email, password }) 
+                        : new URLSearchParams({ username, password });
                     const res = await fetch(`${API_BASE}${url}`, {
                         method: "POST",
-                        headers: mode === "register" ? { "Content-Type": "application/json" } : { "Content-Type": "application/x-www-form-urlencoded" },
+                        headers: mode === "register" 
+                            ? { "Content-Type": "application/json" } 
+                            : { "Content-Type": "application/x-www-form-urlencoded" },
                         body: body
                     });
                     const data = await res.json();
-                    if (!res.ok) throw new Error(data.detail || "Ошибка");
-                    if (mode === "register") { setMode("login"); alert("Готово! Войдите."); return; }
+                    if (!res.ok) throw new Error(data.detail || "Error");
+                    if (mode === "register") { 
+                        setMode("login"); 
+                        setError("");
+                        alert("Account created! Please sign in."); 
+                        return; 
+                    }
                     localStorage.setItem('lingvo_token', data.access_token);
                     onLogin(data.access_token, data.credits);
-                } catch (e) { setError(e.message); }
+                } catch (e) { 
+                    setError(e.message); 
+                } finally {
+                    setLoading(false);
+                }
             };
+
             return (
-                <div className="h-full flex items-center justify-center p-4 bg-slate-50">
-                    <div className="bg-white p-6 rounded-3xl shadow-xl w-full max-w-sm border border-slate-100">
-                        <h1 className="text-3xl font-black mb-6 text-blue-600 text-center italic tracking-tighter uppercase">lingvo.ai</h1>
-                        <div className="space-y-3">
-                            <input className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Логин" value={username} onChange={e=>setUsername(e.target.value)} />
-                            {mode === "register" && <input className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />}
-                            <input className="w-full p-3 bg-slate-50 border rounded-xl" type="password" placeholder="Пароль" value={password} onChange={e=>setPassword(e.target.value)} />
-                            {error && <div className="text-red-500 text-xs text-center">{error}</div>}
-                            <button onClick={handleSubmit} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold uppercase shadow-lg">Вход</button>
-                            <div className="text-center text-xs text-slate-400 cursor-pointer" onClick={() => setMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "Регистрация (+50 💎)" : "Уже есть аккаунт?"}</div>
+                <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
+                    <div className="w-full max-w-sm">
+                        {/* Logo */}
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-purple-500 mb-4 glow-accent">
+                                <Icons.Sparkles />
+                            </div>
+                            <h1 className="text-3xl font-display font-bold gradient-text">Voca AI</h1>
+                            <p className="text-muted text-sm mt-2">Your personal language tutor</p>
+                        </div>
+
+                        {/* Form */}
+                        <div className="glass-card p-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Username</label>
+                                    <input 
+                                        className="input-field" 
+                                        placeholder="Enter username" 
+                                        value={username} 
+                                        onChange={e => setUsername(e.target.value)} 
+                                    />
+                                </div>
+                                
+                                {mode === "register" && (
+                                    <div>
+                                        <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Email</label>
+                                        <input 
+                                            className="input-field" 
+                                            placeholder="Enter email" 
+                                            type="email"
+                                            value={email} 
+                                            onChange={e => setEmail(e.target.value)} 
+                                        />
+                                    </div>
+                                )}
+                                
+                                <div>
+                                    <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Password</label>
+                                    <input 
+                                        className="input-field" 
+                                        type="password" 
+                                        placeholder="Enter password" 
+                                        value={password} 
+                                        onChange={e => setPassword(e.target.value)}
+                                        onKeyPress={e => e.key === 'Enter' && handleSubmit()}
+                                    />
+                                </div>
+
+                                {error && (
+                                    <div className="text-red-400 text-sm text-center py-2 px-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <button 
+                                    onClick={handleSubmit} 
+                                    className="btn-primary flex items-center justify-center gap-2"
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <div className="dot-pulse">
+                                            <span></span><span></span><span></span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {mode === "login" ? "Sign In" : "Create Account"}
+                                            <Icons.ArrowRight />
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-border">
+                                <button 
+                                    onClick={() => setMode(mode === "login" ? "register" : "login")}
+                                    className="w-full text-center text-sm text-muted hover:text-foreground transition-colors"
+                                >
+                                    {mode === "login" ? (
+                                        <>New here? <span className="text-accent font-medium">Create account</span> (+50 credits)</>
+                                    ) : (
+                                        <>Already have an account? <span className="text-accent font-medium">Sign in</span></>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -85,38 +648,339 @@
             const [pass, setPass] = useState("");
             const [users, setUsers] = useState([]);
             const [isLoaded, setIsLoaded] = useState(false);
+
             const load = async () => {
                 const res = await fetch(`${API_BASE}/admin/users?admin_password=${pass}`);
-                if (res.ok) { setUsers(await res.json()); setIsLoaded(true); } else alert("Нет доступа");
+                if (res.ok) { 
+                    setUsers(await res.json()); 
+                    setIsLoaded(true); 
+                } else {
+                    alert("Access denied");
+                }
             };
+
             const add = async (u) => {
-                await fetch(`${API_BASE}/admin/add_credits`, { method: "POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({admin_password:pass, username:u, amount:150}) });
+                await fetch(`${API_BASE}/admin/add_credits`, { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ admin_password: pass, username: u, amount: 150 }) 
+                });
                 load();
             };
+
             return (
-                <div className="modal-overlay" onClick={onClose}><div className="modal-content" onClick={e=>e.stopPropagation()}>
-                    <h2 className="font-black mb-4 tracking-tighter uppercase">АДМИН-ПАНЕЛЬ</h2>
-                    {!isLoaded ? (<div className="flex gap-2"><input className="flex-1 p-2 border rounded-lg" type="password" value={pass} onChange={e=>setPass(e.target.value)} /><button onClick={load} className="bg-black text-white px-4 rounded-lg">Вход</button></div>) : (
-                        <div className="space-y-2 max-h-60 overflow-y-auto">{users.map((u,i)=>(<div key={i} className="flex justify-between text-xs border-b pb-1"><span>{u.username} ({u.credits}💎)</span><button onClick={()=>add(u.username)} className="text-blue-600 font-bold">+150</button></div>))}</div>
-                    )}
-                    <button onClick={onClose} className="mt-4 text-slate-400 text-xs w-full text-center">Закрыть</button>
-                </div></div>
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-lg font-display font-bold">Admin Panel</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-lg transition-colors">
+                                <Icons.X />
+                            </button>
+                        </div>
+                        
+                        {!isLoaded ? (
+                            <div className="flex gap-3">
+                                <input 
+                                    className="input-field flex-1" 
+                                    type="password" 
+                                    placeholder="Admin password"
+                                    value={pass} 
+                                    onChange={e => setPass(e.target.value)} 
+                                />
+                                <button onClick={load} className="btn-primary w-auto px-6">Enter</button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                {users.map((u, i) => (
+                                    <div key={i} className="flex justify-between items-center p-3 bg-surface rounded-lg border border-border">
+                                        <div>
+                                            <span className="font-medium">{u.username}</span>
+                                            <span className="text-muted ml-2">{u.credits} credits</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => add(u.username)} 
+                                            className="text-accent font-medium text-sm hover:text-accentLight"
+                                        >
+                                            +150
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             );
         }
 
         function ShopModal({ onClose }) {
-            const copy = () => { navigator.clipboard.writeText('+79090963833'); alert("Номер +79090963833 скопирован!"); };
+            const [copied, setCopied] = useState(false);
+
+            const copy = () => { 
+                navigator.clipboard.writeText('+79090963833'); 
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            };
+
             return (
-                <div className="modal-overlay" onClick={onClose}><div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
-                    <h2 className="text-xl font-black mb-4 tracking-tighter">ПОПОЛНЕНИЕ 💎</h2>
-                    <div className="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-100 shadow-sm">
-                        <div className="text-[10px] uppercase font-bold opacity-50 mb-1">СБП / Т-Банк</div>
-                        <div className="text-xl font-black text-blue-600 flex items-center justify-center gap-2">+79090963833 <button onClick={copy} className="bg-blue-100 p-1 rounded-lg text-sm">📋</button></div>
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content text-center" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-lg font-display font-bold">Top Up Credits</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-lg transition-colors">
+                                <Icons.X />
+                            </button>
+                        </div>
+
+                        <div className="bg-surface p-5 rounded-xl border border-border mb-6">
+                            <div className="text-xs uppercase font-medium text-muted mb-2 tracking-wider">Payment Number</div>
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="text-xl font-bold text-foreground">+79090963833</span>
+                                <button 
+                                    onClick={copy} 
+                                    className="p-2 bg-surfaceHover hover:bg-borderLight rounded-lg transition-colors"
+                                >
+                                    {copied ? (
+                                        <span className="text-success text-xs font-medium">Copied!</span>
+                                    ) : (
+                                        <Icons.Copy />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        <p className="text-sm text-muted mb-6">After payment, send the receipt to support:</p>
+                        
+                        <a 
+                            href="https://t.me/lingvoaisupport_bot" 
+                            target="_blank" 
+                            className="btn-primary inline-flex items-center justify-center gap-2 w-full mb-4"
+                        >
+                            Send Receipt via Telegram
+                            <Icons.ArrowRight />
+                        </a>
                     </div>
-                    <p className="text-xs mb-4 text-slate-500">После оплаты отправьте чек в поддержку:</p>
-                    <a href="https://t.me/lingvoaisupport_bot" target="_blank" className="block bg-blue-600 text-white py-3 rounded-xl font-bold mb-3 shadow-lg">Отправить чек в Telegram</a>
-                    <button onClick={onClose} className="text-slate-400 text-sm font-bold">Закрыть</button>
-                </div></div>
+                </div>
+            );
+        }
+
+        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, onLogout, onAdminOpen }) {
+            const [vCount, setVCount] = useState(0);
+
+            const handleSecretClick = () => { 
+                if (vCount >= 4) { 
+                    onAdminOpen(); 
+                    setVCount(0); 
+                } else {
+                    setVCount(vCount + 1);
+                }
+            };
+
+            const presets = [
+                { char: "Barista", sit: "Ordering coffee", icon: "coffee" },
+                { char: "Doctor", sit: "Medical appointment", icon: "medical" },
+                { char: "Tour Guide", sit: "Visiting a museum", icon: "map" },
+                { char: "Shop Assistant", sit: "Buying clothes", icon: "shopping" },
+            ];
+
+            return (
+                <div className="min-h-screen flex flex-col p-6 overflow-y-auto" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
+                    <div className="flex-1 flex flex-col max-w-lg mx-auto w-full">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-8">
+                            <div onClick={handleSecretClick} className="cursor-pointer">
+                                <h1 className="text-2xl font-display font-bold gradient-text">Voca AI</h1>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div onClick={onShopOpen} className="credits-badge">
+                                    <Icons.Gem />
+                                    <span>{credits}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Welcome Card */}
+                        <div className="glass-card p-5 mb-6">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 rounded-xl bg-gradient-to-br from-accent/20 to-purple-500/20 border border-accent/20">
+                                    <Icons.Sparkles />
+                                </div>
+                                <div>
+                                    <h2 className="font-semibold mb-1">How it works</h2>
+                                    <ul className="text-sm text-muted space-y-1">
+                                        <li>Choose a role and scenario to practice</li>
+                                        <li>AI will correct your mistakes and give tips</li>
+                                        <li>Tap to reveal translations when needed</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Quick Presets */}
+                        <div className="mb-6">
+                            <label className="block text-xs font-medium text-muted mb-3 uppercase tracking-wider">Quick Start</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {presets.map((p, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => { setCharacter(p.char); setSituation(p.sit); }}
+                                        className={`feature-card text-left ${character === p.char && situation === p.sit ? 'border-accent bg-accent/5' : ''}`}
+                                    >
+                                        <div className="font-medium text-sm">{p.char}</div>
+                                        <div className="text-xs text-muted">{p.sit}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Custom Setup */}
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Your Partner</label>
+                                <input 
+                                    className="input-field" 
+                                    placeholder="e.g. Hotel Receptionist" 
+                                    value={character} 
+                                    onChange={e => setCharacter(e.target.value)} 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-muted mb-2 uppercase tracking-wider">Scenario</label>
+                                <input 
+                                    className="input-field" 
+                                    placeholder="e.g. Checking into a hotel" 
+                                    value={situation} 
+                                    onChange={e => setSituation(e.target.value)} 
+                                />
+                            </div>
+                        </div>
+
+                        {/* Start Button */}
+                        <button 
+                            onClick={onStart}
+                            disabled={!character || !situation}
+                            className="btn-primary flex items-center justify-center gap-2"
+                        >
+                            Start Conversation
+                            <Icons.ArrowRight />
+                        </button>
+
+                        {/* Logout */}
+                        <button 
+                            onClick={onLogout}
+                            className="mt-6 flex items-center justify-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
+                        >
+                            <Icons.LogOut />
+                            Sign out
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, visibleTranslations, setVisibleTranslations }) {
+            const scrollRef = useRef(null);
+
+            useEffect(() => { 
+                scrollRef.current?.scrollIntoView({ behavior: "smooth" }); 
+            }, [messages, loading, suggestions]);
+
+            return (
+                <div className="app-layout">
+                    {/* Header */}
+                    <header className="app-header">
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={onBack}
+                                className="p-2 -ml-2 hover:bg-surfaceHover rounded-lg transition-colors"
+                            >
+                                <Icons.Back />
+                            </button>
+                            <h2 className="font-display font-bold gradient-text">Voca AI</h2>
+                        </div>
+                        <div onClick={onShopOpen} className="credits-badge">
+                            <Icons.Gem />
+                            <span>{credits}</span>
+                        </div>
+                    </header>
+
+                    {/* Chat Messages */}
+                    <main className="chat-zone">
+                        {messages.length === 0 && !loading && (
+                            <div className="flex items-center justify-center h-full">
+                                <div className="text-center text-muted">
+                                    <Icons.MessageCircle />
+                                    <p className="mt-2 text-sm">Starting conversation...</p>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {messages.map((m, i) => (
+                            <div key={m.id || i} className={`bubble ${m.role === 'user' ? 'user' : 'ai'}`}>
+                                {m.content ? (
+                                    <div className="whitespace-pre-wrap">{m.content}</div>
+                                ) : (
+                                    <div className="dot-pulse">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                )}
+                                
+                                {m.role === 'assistant' && m.translation && (
+                                    <div>
+                                        {!visibleTranslations[m.id] ? (
+                                            <button 
+                                                onClick={() => setVisibleTranslations(v => ({...v, [m.id]: true}))} 
+                                                className="show-trans-btn"
+                                            >
+                                                <Icons.Eye />
+                                                Show translation
+                                            </button>
+                                        ) : (
+                                            <div className="translation-text">{m.translation}</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        <div ref={scrollRef} />
+                    </main>
+
+                    {/* Bottom Panel */}
+                    <footer className="bottom-panel">
+                        {/* Suggestions */}
+                        {!loading && suggestions.length > 0 && (
+                            <div className="suggestions-area">
+                                {suggestions.map((s, i) => (
+                                    <button 
+                                        key={i} 
+                                        onClick={() => onSend(s.en)} 
+                                        className="suggestion-card"
+                                    >
+                                        <div className="en">{s.en}</div>
+                                        <div className="ru">{s.ru}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Input */}
+                        <div className="input-bar">
+                            <input 
+                                className="input-field" 
+                                placeholder="Type your reply..." 
+                                value={input} 
+                                onChange={e => setInput(e.target.value)} 
+                                onKeyPress={e => e.key === 'Enter' && onSend(input)}
+                            />
+                            <button 
+                                onClick={() => onSend(input)} 
+                                disabled={!input.trim() || loading}
+                                className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accentDark text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-accent/30"
+                            >
+                                <Icons.Send />
+                            </button>
+                        </div>
+                    </footer>
+                </div>
             );
         }
 
@@ -125,7 +989,6 @@
             const [credits, setCredits] = useState(0);
             const [isShopOpen, setIsShopOpen] = useState(false);
             const [isAdminOpen, setIsAdminOpen] = useState(false);
-            const [vCount, setVCount] = useState(0);
             const [step, setStep] = useState('setup');
             const [character, setCharacter] = useState('');
             const [situation, setSituation] = useState('');
@@ -134,38 +997,53 @@
             const [suggestions, setSuggestions] = useState([]);
             const [loading, setLoading] = useState(false);
             const [visibleTranslations, setVisibleTranslations] = useState({});
-            const scrollRef = useRef(null);
 
-            useEffect(() => { if (token) fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)).catch(() => setToken(null)); }, [token]);
-            useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, suggestions]);
+            useEffect(() => { 
+                if (token) {
+                    fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } })
+                        .then(r => r.json())
+                        .then(d => setCredits(d.credits))
+                        .catch(() => setToken(null)); 
+                }
+            }, [token]);
 
-            const handleSecretClick = () => { if(vCount >= 4) { setIsAdminOpen(true); setVCount(0); } else setVCount(vCount + 1); };
-
-            if (!token) return <AuthScreen onLogin={(t, c) => { setToken(t); setCredits(c); }} />;
+            if (!token) {
+                return <AuthScreen onLogin={(t, c) => { setToken(t); setCredits(c); }} />;
+            }
 
             const handleTriggerAI = async (history) => {
-                setLoading(true); setSuggestions([]);
+                setLoading(true); 
+                setSuggestions([]);
                 setMessages(prev => [...prev, { role: 'assistant', content: '', translation: '', id: Date.now() }]);
+                
                 try {
                     const response = await fetch(`${API_BASE}/chat_stream?token=${token}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ character, situation, history: history.map(m=>({role:m.role,content:m.content})) })
+                        body: JSON.stringify({ character, situation, history: history.map(m => ({ role: m.role, content: m.content })) })
                     });
+                    
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let streamBuffer = "";
+                    
                     while (true) {
                         const { value, done } = await reader.read();
                         if (done) break;
                         streamBuffer += decoder.decode(value, { stream: true });
+                        
                         if (streamBuffer.includes("||META||")) {
                             const [textPart, metaPart] = streamBuffer.split("||META||");
                             try {
                                 const parsed = JSON.parse(metaPart);
                                 setMessages(prev => {
                                     const next = [...prev];
-                                    next[next.length - 1] = { role: 'assistant', content: textPart, translation: parsed.translation, id: Date.now() };
+                                    next[next.length - 1] = { 
+                                        role: 'assistant', 
+                                        content: textPart, 
+                                        translation: parsed.translation, 
+                                        id: Date.now() 
+                                    };
                                     return next;
                                 });
                                 setSuggestions(parsed.suggestions || []);
@@ -173,72 +1051,87 @@
                             } catch(e) {}
                             break;
                         } else {
-                            setMessages(prev => { const next = [...prev]; next[next.length - 1].content = streamBuffer; return next; });
+                            setMessages(prev => { 
+                                const next = [...prev]; 
+                                next[next.length - 1].content = streamBuffer; 
+                                return next; 
+                            });
                         }
                     }
-                } catch (err) { alert("Ошибка!"); } finally { setLoading(false); }
+                } catch (err) { 
+                    alert("Error occurred!"); 
+                } finally { 
+                    setLoading(false); 
+                }
             };
 
             const sendMessage = (text) => {
                 if (!text.trim() || loading) return;
-                const next = [...messages.filter(m=>m.content).map(m=>({role:m.role,content:m.content})), { role: 'user', content: text }];
-                setMessages(next); setInput(''); handleTriggerAI(next);
+                const next = [
+                    ...messages.filter(m => m.content).map(m => ({ role: m.role, content: m.content })), 
+                    { role: 'user', content: text }
+                ];
+                setMessages(next); 
+                setInput(''); 
+                handleTriggerAI(next);
             };
 
-            if (step === 'setup') return (
-                <div className="h-full flex items-center justify-center p-4 bg-slate-50 overflow-y-auto">
-                    <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl w-full max-w-xl border border-slate-100 my-auto relative">
-                        <h1 onClick={handleSecretClick} className="text-4xl font-black mb-4 text-blue-600 text-center italic tracking-tighter uppercase cursor-pointer">lingvo.ai</h1>
-                        <div className="bg-blue-50 p-4 rounded-2xl mb-6 text-[11px] text-blue-700 font-medium border border-blue-100">
-                            <h3 className="font-bold mb-2 italic text-[13px]">🚀 Как это работает?</h3>
-                            <ul className="space-y-1.5">
-                                <li>• Выберите любую роль и ситуацию для общения.</li>
-                                <li>• Разбор <span className="mini-q-icon">?</span> объяснит структуру и правила.</li>
-                                <li>• lingvo.ai исправит ошибки и даст совет.</li>
-                                <li>• Перевод скрыт — нажми, чтобы проверить себя.</li>
-                            </ul>
-                        </div>
-                        <div className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-widest">Собеседник</label><input className="w-full p-3 bg-slate-50 border rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Напр: Бариста" value={character} onChange={e => setCharacter(e.target.value)} /></div>
-                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-widest">Ситуация</label><input className="w-full p-3 bg-slate-50 border rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Напр: Заказ кофе" value={situation} onChange={e => setSituation(e.target.value)} /></div>
-                            <button onClick={() => { if(character && situation) { setStep('chat'); handleTriggerAI([]); } }} className="w-full bg-blue-600 text-white py-4 rounded-[1.5rem] font-black text-lg shadow-xl uppercase transition-all">Начать</button>
-                        </div>
-                        <div className="text-center mt-4 text-[10px] text-slate-400 cursor-pointer" onClick={() => { localStorage.removeItem('lingvo_token'); setToken(null); }}>Выйти из аккаунта</div>
-                        {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} />}{isAdminOpen && <AdminPanel onClose={()=>setIsAdminOpen(false)} />}
-                    </div>
-                </div>
-            );
+            const handleLogout = () => {
+                localStorage.removeItem('lingvo_token');
+                setToken(null);
+            };
+
+            const handleStart = () => {
+                if (character && situation) {
+                    setStep('chat');
+                    handleTriggerAI([]);
+                }
+            };
+
+            const handleBack = () => {
+                setStep('setup');
+                setMessages([]);
+                setSuggestions([]);
+                setCharacter('');
+                setSituation('');
+            };
 
             return (
-                <div className="app-layout">
-                    <header>
-                        <h2 onClick={handleSecretClick} className="font-black text-blue-600 text-lg uppercase tracking-tighter cursor-pointer">lingvo.ai</h2>
-                        <div onClick={()=>setIsShopOpen(true)} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg cursor-pointer border border-blue-100">{credits} 💎</div>
-                    </header>
-                    <main className="chat-zone">
-                        {messages.map((m, i) => (
-                            <div key={i} className={`bubble ${m.role === 'user' ? 'user' : 'ai'}`}>
-                                <div className="font-medium whitespace-pre-wrap">{m.content || <span className="dot-pulse">● ● ●</span>}</div>
-                                {m.role === 'assistant' && m.translation && (
-                                    <div>{!visibleTranslations[m.id] ? (<div onClick={() => setVisibleTranslations(v=>({...v, [m.id]:true}))} className="show-trans-btn">Показать перевод</div>) : (<div className="translation-text">{m.translation}</div>)}</div>
-                                )}
-                            </div>
-                        ))}
-                        <div ref={scrollRef} />
-                    </main>
-                    <footer className="bottom-panel">
-                        <div className="suggestions-area">
-                            {!loading && suggestions.map((s, i) => (<button key={i} onClick={() => sendMessage(s.en)} className="suggestion-card active:scale-[0.98]"><div className="en">{s.en}</div><div className="ru">{s.ru}</div></button>))}
-                        </div>
-                        <div className="input-bar">
-                            <input className="flex-1 p-3 bg-slate-50 border rounded-xl outline-none font-bold text-sm" placeholder="Ответь..." value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendMessage(input)} />
-                            <button onClick={() => sendMessage(input)} className="bg-blue-600 text-white w-10 h-10 rounded-xl font-black flex items-center justify-center flex-shrink-0">⮕</button>
-                        </div>
-                    </footer>
-                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} />}{isAdminOpen && <AdminPanel onClose={()=>setIsAdminOpen(false)} />}
-                </div>
+                <>
+                    {step === 'setup' ? (
+                        <SetupScreen
+                            onStart={handleStart}
+                            character={character}
+                            setCharacter={setCharacter}
+                            situation={situation}
+                            setSituation={setSituation}
+                            credits={credits}
+                            onShopOpen={() => setIsShopOpen(true)}
+                            onLogout={handleLogout}
+                            onAdminOpen={() => setIsAdminOpen(true)}
+                        />
+                    ) : (
+                        <ChatScreen
+                            messages={messages}
+                            loading={loading}
+                            suggestions={suggestions}
+                            input={input}
+                            setInput={setInput}
+                            onSend={sendMessage}
+                            onBack={handleBack}
+                            credits={credits}
+                            onShopOpen={() => setIsShopOpen(true)}
+                            visibleTranslations={visibleTranslations}
+                            setVisibleTranslations={setVisibleTranslations}
+                        />
+                    )}
+                    
+                    {isShopOpen && <ShopModal onClose={() => setIsShopOpen(false)} />}
+                    {isAdminOpen && <AdminPanel onClose={() => setIsAdminOpen(false)} />}
+                </>
             );
         }
+
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
