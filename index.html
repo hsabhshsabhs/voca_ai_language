@@ -908,7 +908,7 @@
                             </div>
                         </div>
 
-                        {{/* Hints Toggle */}
+                        {/* Hints Toggle */}
                         <div className="mb-6">
                             <button 
                                 onClick={() => setHintsEnabled(!hintsEnabled)}
@@ -971,7 +971,7 @@
             );
         }
 
-        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, visibleTranslations, setVisibleTranslations, onAnalyze, analysisLoading, token }) {
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, visibleTranslations, setVisibleTranslations, onAnalyze, analysisLoading }) {
             const scrollRef = useRef(null);
 
             useEffect(() => { 
@@ -1292,7 +1292,6 @@
                             setVisibleTranslations={setVisibleTranslations}
                             onAnalyze={handleAnalyze}
                             analysisLoading={analysisLoading}
-                            token={token}
                         />
                     )}
                     
