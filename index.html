@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>lingvo.ai — Твой личный репетитор</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f1f5f9; }
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .app-layout { display: flex; flex-direction: column; height: 100dvh; max-width: 800px; margin: 0 auto; background: #ffffff; position: relative; }
+        header { height: 56px; flex-shrink: 0; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; background: white; z-index: 20; }
+        .chat-zone { flex: 1; height: 70dvh; overflow-y: auto; background-color: #e7ebf0; padding: 1rem; scrollbar-width: none; }
+        .chat-zone::-webkit-scrollbar { display: none; }
+        .bottom-panel { height: 30dvh; display: flex; flex-direction: column; border-top: 1px solid #d1d9e0; background: white; flex-shrink: 0; }
+        .suggestions-area { flex: 1; overflow-y: auto; padding: 0.75rem; background: #ffffff; }
+        .input-bar { height: 64px; flex-shrink: 0; padding: 0 0.75rem; display: flex; gap: 0.5rem; border-top: 1px solid #f1f5f9; align-items: center; background: white; }
+        .bubble { max-width: 82%; border-radius: 1rem; padding: 0.6rem 0.9rem; margin-bottom: 0.75rem; position: relative; font-size: 1.05rem; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .user { background: #effdde; color: #000; margin-left: auto; border-bottom-right-radius: 0.2rem; }
+        .ai { background: white; color: #000; border-bottom-left-radius: 0.2rem; }
+        .show-trans-btn { color: #2481cc; font-size: 0.85rem; font-weight: 600; margin-top: 0.4rem; display: block; cursor: pointer; border-top: 1px solid #f1f1f1; padding-top: 0.3rem; }
+        .translation-text { color: #64748b; font-style: italic; font-size: 0.9rem; margin-top: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.3rem; }
+        .explain-btn { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; cursor: pointer; position: absolute; top: 4px; z-index: 10; transition: all 0.2s; }
+        .ai .explain-btn { background: #fffbeb; color: #d97706; border: 1px solid #fef3c7; right: -38px; }
+        .user .explain-btn { background: #eff6ff; color: #1e40af; border: 2px solid #dbeafe; left: -38px; }
+        @media (max-width: 640px) { .bubble { max-width: 88%; font-size: 1rem; } .ai .explain-btn { right: 4px; top: -14px; width: 26px; height: 28px; font-size: 12px; } .user .explain-btn { left: 4px; top: -14px; width: 26px; height: 28px; font-size: 12px; } }
+        .mini-q-icon { display: inline-flex; width: 20px; height: 20px; background: #fffbeb; color: #d97706; border: 1px solid #fef3c7; border-radius: 50%; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; margin: 0 4px; vertical-align: middle; }
+        .suggestion-card { background: #ffffff; border: 1px solid #d1d9e0; border-radius: 0.75rem; padding: 0.6rem 1rem; transition: all 0.2s; text-align: left; width: 100%; margin-bottom: 0.5rem; }
+        .suggestion-card:hover { border-color: #2481cc; }
+        .suggestion-card .en { font-size: 1.15rem; font-weight: 800; color: #2481cc; line-height: 1.2; }
+        .suggestion-card .ru { font-size: 0.85rem; color: #64748b; margin-top: 1px; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(6px); z-index: 999; position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; }
+        @media (min-width: 640px) { .modal-overlay { align-items: center; padding: 1.5rem; } }
+        .modal-content { background: white; width: 100%; max-height: 90vh; overflow: hidden; border-top-left-radius: 2rem; border-top-right-radius: 2rem; display: flex; flex-direction: column; animation: slideUp 0.3s ease-out; }
+        @media (min-width: 640px) { .modal-content { border-radius: 2.5rem; width: 90%; max-width: 650px; animation: zoomIn 0.2s ease-out; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .dot-pulse { display: inline-block; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .modal-body h3 { color: #1e40af; font-weight: 800; margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 2px solid #eff6ff; padding-bottom: 0.25rem; }
+        .modal-body strong { background: #fef3c7; padding: 0 4px; border-radius: 4px; color: #1e293b; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        // ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ ТЕРМИНАЛА (Cloudflare)
+        const API_BASE = "https://f70e18b96cf11d.lhr.life"; 
+
+        function AuthScreen({ onLogin }) {
+            const [mode, setMode] = useState("login");
+            const [username, setUsername] = useState("");
+            const [email, setEmail] = useState("");
+            const [password, setPassword] = useState("");
+            const [code, setCode] = useState("");
+            const [recoveryStep, setRecoveryStep] = useState(1);
+            const [error, setError] = useState("");
+
+            const handleSubmit = async () => {
+                setError("");
+                try {
+                    if (mode === "recovery") {
+                        if (recoveryStep === 1) {
+                            const res = await fetch(`${API_BASE}/recovery/request`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ email }) });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.detail);
+                            alert("Код отправлен на почту!");
+                            setRecoveryStep(2);
+                        } else {
+                            const res = await fetch(`${API_BASE}/recovery/reset`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ email, code, new_password: password }) });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.detail);
+                            alert(`Пароль изменен! Логин: ${data.username}`);
+                            setMode("login"); setRecoveryStep(1);
+                        }
+                        return;
+                    }
+
+                    let url = mode === "register" ? "/register" : "/token";
+                    let body = mode === "register" ? JSON.stringify({ username, email, password }) : new URLSearchParams({ username, password });
+                    const res = await fetch(`${API_BASE}${url}`, {
+                        method: "POST",
+                        headers: mode === "register" ? { "Content-Type": "application/json" } : { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: body
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || "Ошибка");
+                    if (mode === "register") { setMode("login"); alert("Регистрация успешна!"); return; }
+                    localStorage.setItem('lingvo_token', data.access_token);
+                    onLogin(data.access_token, data.credits);
+                } catch (e) { setError(e.message); }
+            };
+
+            return (
+                <div className="h-full flex items-center justify-center p-4 bg-slate-50">
+                    <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm">
+                        <h1 className="text-4xl font-black mb-6 text-blue-600 text-center italic">lingvo.ai</h1>
+                        <h2 className="text-xl font-bold mb-4 text-center">
+                            {mode === "login" ? "Вход" : mode === "register" ? "Регистрация" : "Восстановление"}
+                        </h2>
+                        {mode !== "recovery" ? (
+                            <>
+                                <input className="w-full p-4 mb-3 bg-slate-50 border rounded-xl" placeholder="Логин" value={username} onChange={e=>setUsername(e.target.value)} />
+                                {mode === "register" && <input className="w-full p-4 mb-3 bg-slate-50 border rounded-xl" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />}
+                                <input className="w-full p-4 mb-4 bg-slate-50 border rounded-xl" type="password" placeholder="Пароль" value={password} onChange={e=>setPassword(e.target.value)} />
+                            </>
+                        ) : (
+                            <>
+                                <input className="w-full p-4 mb-3 bg-slate-50 border rounded-xl" placeholder="Ваша почта" value={email} onChange={e=>setEmail(e.target.value)} disabled={recoveryStep === 2} />
+                                {recoveryStep === 2 && (
+                                    <>
+                                        <input className="w-full p-4 mb-3 bg-slate-50 border rounded-xl" placeholder="Код" value={code} onChange={e=>setCode(e.target.value)} />
+                                        <input className="w-full p-4 mb-4 bg-slate-50 border rounded-xl" type="password" placeholder="Новый пароль" value={password} onChange={e=>setPassword(e.target.value)} />
+                                    </>
+                                )}
+                            </>
+                        )}
+                        {error && <div className="text-red-500 text-sm mb-4 text-center">{error}</div>}
+                        <button onClick={handleSubmit} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-lg mb-4">
+                            {mode === "login" ? "Войти" : mode === "register" ? "Создать аккаунт" : (recoveryStep === 1 ? "Получить код" : "Сбросить пароль")}
+                        </button>
+                        <div className="flex flex-col gap-2 text-center text-sm text-slate-500 cursor-pointer">
+                            {mode === "login" ? (
+                                <><div onClick={() => setMode("register")}>Нет аккаунта? Регистрация (+50)</div><div onClick={() => setMode("recovery")} className="text-blue-500 font-bold">Забыли данные?</div></>
+                            ) : (<div onClick={() => { setMode("login"); setRecoveryStep(1); }}>Вернуться</div>)}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminPanel({ onClose }) {
+            const [pass, setPass] = useState("");
+            const [users, setUsers] = useState([]);
+            const [search, setSearch] = useState("");
+            const [isLoaded, setIsLoaded] = useState(false);
+            const [amount, setAmount] = useState(150);
+            const loadUsers = async () => {
+                const res = await fetch(`${API_BASE}/admin/users?admin_password=${pass}`);
+                if (res.ok) { setUsers(await res.json()); setIsLoaded(true); }
+                else { alert("Ошибка"); }
+            };
+            const addCredits = async (user) => {
+                const res = await fetch(`${API_BASE}/admin/add_credits`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ admin_password: pass, username: user, amount: parseFloat(amount) })
+                });
+                if (res.ok) { alert("Ок!"); loadUsers(); }
+            };
+            const filteredUsers = users.filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+            return (
+                <div className="modal-overlay" onClick={onClose}><div className="modal-content p-6 bg-white flex flex-col h-[90vh]" onClick={e=>e.stopPropagation()} style={{alignSelf: 'center'}}><h2 className="text-xl font-black mb-4 tracking-tighter">АДМИН-ПАНЕЛЬ 🛠️</h2>
+                {!isLoaded ? (<div className="flex gap-2"><input className="flex-1 p-3 border rounded-xl" type="password" value={pass} onChange={e=>setPass(e.target.value)} /><button onClick={loadUsers} className="bg-black text-white px-4 rounded-xl font-bold">Вход</button></div>) : (<>
+                <div className="flex gap-2 mb-4"><input className="flex-1 p-3 border rounded-xl" placeholder="Поиск" value={search} onChange={e=>setSearch(e.target.value)} /><input className="w-20 p-3 border rounded-xl" type="number" value={amount} onChange={e=>setAmount(e.target.value)} /></div>
+                <div className="flex-1 overflow-y-auto space-y-2">{filteredUsers.map((u, i) => (<div key={i} className="p-3 bg-slate-50 border rounded-xl flex justify-between items-center"><div className="text-sm"><b>{u.username}</b> ({u.credits}💎)<br/><span className="opacity-50 text-xs">{u.email}</span></div><button onClick={()=>addCredits(u.username)} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs">+{amount}</button></div>))}</div></>)}
+                <button onClick={onClose} className="mt-4 w-full p-3 bg-slate-100 rounded-xl font-bold">Закрыть</button></div></div>
+            );
+        }
+
+        function ShopModal({ onClose }) {
+            const [selectedTier, setSelectedTier] = useState(null);
+            const copyNumber = () => { navigator.clipboard.writeText('+79090963833'); alert("Скопировано: +79090963833"); };
+            return (
+                <div className="modal-overlay" onClick={onClose}><div className="modal-content bg-white p-8" onClick={e=>e.stopPropagation()}><div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-black">Баланс 💎</h2><button onClick={onClose} className="text-slate-400 text-3xl">&times;</button></div>
+                {!selectedTier ? (<div className="space-y-4">{[{ name: "Старт", credits: 150, price: "290₽" }, { name: "Профи", credits: 500, price: "790₽", popular: true }, { name: "Безлимит", credits: 1500, price: "1490₽" }].map((t, i) => (<div key={i} onClick={()=>setSelectedTier(t)} className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${t.popular ? 'border-blue-500 bg-blue-50' : 'border-slate-100'}`}><div className="flex justify-between items-center"><div><b>{t.name}</b><div className="text-slate-500 text-sm">{t.credits} сообщ.</div></div><div className="text-xl font-black text-blue-600">{t.price}</div></div></div>))}</div>) : (
+                <div className="text-center"><div className="bg-slate-50 p-6 rounded-2xl mb-6"><div className="text-sm opacity-50 mb-2 uppercase font-bold text-center">Оплата СБП</div><div className="flex items-center justify-center gap-3 mb-4"><div className="text-2xl font-black text-blue-600">+7-909-096-38-33</div><button onClick={copyNumber} className="bg-blue-100 p-2 rounded-lg text-blue-600">📋</button></div><div className="text-sm text-center">Переведите <b>{selectedTier.price}</b> в <b>Т-Банк</b></div></div><a href="https://t.me/lingvoaisupport_bot" target="_blank" className="block w-full bg-blue-600 text-white py-4 rounded-xl font-bold mb-3 text-center">Отправить чек</a><button onClick={()=>setSelectedTier(null)} className="text-slate-400">Назад</button></div>)}</div></div>
+            );
+        }
+
+        function App() {
+            const [token, setToken] = useState(localStorage.getItem('lingvo_token'));
+            const [credits, setCredits] = useState(0);
+            const [isShopOpen, setIsShopOpen] = useState(false);
+            const [isAdminOpen, setIsAdminOpen] = useState(false);
+            const [vClickCount, setVClickCount] = useState(0);
+            const [step, setStep] = useState('setup');
+            const [character, setCharacter] = useState('');
+            const [situation, setSituation] = useState('');
+            const [mode, setMode] = useState('with_suggestions');
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [suggestions, setSuggestions] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [explanation, setExplanation] = useState(null);
+            const [expLoading, setExpLoading] = useState(false);
+            const [visibleTranslations, setVisibleTranslations] = useState({});
+            const scrollRef = useRef(null);
+
+            useEffect(() => { if (token) { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)).catch(() => setToken(null)); } }, [token]);
+            useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, suggestions]);
+
+            const handleVClick = () => { setVClickCount(c => { if (c + 1 >= 5) { setIsAdminOpen(true); return 0; } return c + 1; }); };
+
+            if (!token) return <AuthScreen onLogin={(t, c) => { setToken(t); setCredits(c); }} />;
+
+            const handleTriggerAI = async (history) => {
+                setLoading(true); setSuggestions([]);
+                setMessages(prev => [...prev, { role: 'assistant', content: '', translation: '', id: Date.now() }]);
+                try {
+                    const response = await fetch(`${API_BASE}/chat_stream?token=${token}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ character, situation, history: history.map(m=>({role:m.role,content:m.content})), mode })
+                    });
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let streamBuffer = "";
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        streamBuffer += decoder.decode(value, { stream: true });
+                        if (streamBuffer.includes("||ERROR||")) { alert(streamBuffer.split("||ERROR||")[1]); setLoading(false); return; }
+                        if (streamBuffer.includes("||META||")) {
+                            const [textPart, metaPart] = streamBuffer.split("||META||");
+                            try {
+                                const parsed = JSON.parse(metaPart);
+                                setMessages(prev => {
+                                    const next = [...prev];
+                                    const lastIdx = next.length - 1;
+                                    next[lastIdx] = { ...next[lastIdx], content: textPart, translation: parsed.translation };
+                                    if (parsed.user_correction && next.length >= 2) {
+                                        const uIdx = next.findLastIndex(m => m.role === 'user');
+                                        if (uIdx !== -1) next[uIdx].correction = parsed.user_correction;
+                                    }
+                                    return next;
+                                });
+                                setSuggestions(parsed.suggestions || []);
+                                setCredits(c => c - 1);
+                            } catch(e) {}
+                            break; 
+                        } else {
+                            const currentText = streamBuffer;
+                            setMessages(prev => {
+                                const next = [...prev];
+                                next[next.length - 1].content = currentText;
+                                return next;
+                            });
+                        }
+                    }
+                } catch (err) { alert("Ошибка соединения."); } finally { setLoading(false); }
+            };
+
+            const handleExplain = async (text) => {
+                setExplanation(""); setExpLoading(true);
+                try {
+                    const res = await fetch(`${API_BASE}/explain`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ text })
+                    });
+                    const data = await res.json();
+                    if (res.status === 402) { alert(data.detail); return; }
+                    setExplanation(data.explanation);
+                    setCredits(c => c - 2);
+                } catch (err) { setExplanation("Ошибка."); } finally { setExpLoading(false); }
+            };
+
+            const downloadFile = () => {
+                const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>lingvo.ai - Lesson</title><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6}h1{color:#2481cc;text-align:center;border-bottom:4px solid #2481cc;padding-bottom:15px}h3{color:#1e40af;border-bottom:2px solid #eee;margin-top:30px}strong{background:#fef3c7;padding:2px 4px}</style></head><body><div style="background:white;padding:40px;border-radius:20px;border:1px solid #eee"><h1>lingvo.ai English Lesson</h1>${marked.parse(explanation || "")}</div></body></html>`;
+                const blob = new Blob([html], {type: 'text/html'});
+                const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `lingvo_Lesson.html`; link.click();
+            };
+
+            const sendMessage = (text) => {
+                if (!text.trim() || loading) return;
+                const newHistory = [...messages.filter(m=>m.content).map(m=>({role:m.role,content:m.content})), { role: 'user', content: text }];
+                setMessages(newHistory); setInput(''); handleTriggerAI(newHistory);
+            };
+
+            if (step === 'setup') return (
+                <div className="h-full flex items-center justify-center p-4 bg-slate-50 overflow-y-auto">
+                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-xl border border-slate-100 my-auto relative">
+                        <div className="absolute top-6 right-8 font-bold text-slate-400 text-sm cursor-pointer hover:text-blue-600" onClick={()=>setIsShopOpen(true)}>Баланс: {credits} 💎</div>
+                        <h1 className="text-5xl font-black mb-6 text-blue-600 text-center uppercase italic cursor-pointer" onClick={handleVClick}>lingvo.ai</h1>
+                        <div className="bg-blue-50 p-6 rounded-3xl mb-8 border border-blue-100 text-center md:text-left text-sm text-blue-700 font-medium">
+                            <h3 className="font-bold text-blue-800 mb-3 italic text-lg">🚀 Как это работает?</h3>
+                            Разбор <span className="mini-q-icon">?</span> объяснит структуру предложения и объяснит правила построения фразы.
+                        </div>
+                        <div className="space-y-6">
+                            <div><label className="block text-xs font-black text-slate-400 uppercase mb-2 ml-2 tracking-widest">Собеседник</label><input className="w-full p-5 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-lg" placeholder="Напр: Бариста" value={character} onChange={e => setCharacter(e.target.value)} /></div>
+                            <div><label className="block text-xs font-black text-slate-400 uppercase mb-2 ml-2 tracking-widest">Ситуация</label><textarea className="w-full p-5 bg-slate-50 border rounded-2xl h-32 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-lg" placeholder="Напр: Заказ латте" value={situation} onChange={e => setSituation(e.target.value)} /></div>
+                            <button onClick={() => { if(character && situation) { setStep('chat'); handleTriggerAI([]); } }} className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black text-xl shadow-xl uppercase">Начать</button>
+                        </div>
+                        <div className="text-center mt-6 text-slate-400 text-sm cursor-pointer" onClick={() => { localStorage.removeItem('lingvo_token'); setToken(null); }}>Выйти</div>
+                        {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} />}{isAdminOpen && <AdminPanel onClose={()=>setIsAdminOpen(false)} />}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="app-layout">
+                    <header>
+                        <div className="flex items-center gap-2"><div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-black cursor-pointer" onClick={handleVClick}>L</div><h2 className="font-black text-slate-900 text-xl tracking-tighter uppercase">lingvo.ai</h2></div>
+                        <div className="flex items-center gap-2">
+                            <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg cursor-pointer hover:bg-blue-100" onClick={()=>setIsShopOpen(true)}>{credits} 💎</div>
+                            <button onClick={() => setMode(mode === 'with_suggestions' ? 'free_input' : 'with_suggestions')} className={`px-3 py-1.5 rounded-xl text-[10px] font-black border-2 transition-all ${mode === 'with_suggestions' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-slate-50 text-slate-400'}`}>ПОДСКАЗКИ: {mode === 'with_suggestions' ? 'ВКЛ' : 'ВЫКЛ'}</button>
+                            <button onClick={() => window.location.reload()} className="p-1.5 text-slate-300 hover:text-red-500"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg></button>
+                        </div>
+                    </header>
+                    <main className="chat-zone">
+                        {messages.map((m, i) => (
+                            <div key={i} className={`bubble ${m.role === 'user' ? 'user' : 'ai'}`}>
+                                {m.content && (<div onClick={() => handleExplain(m.content)} className="explain-btn shadow-sm">?</div>)}
+                                <div className="font-medium whitespace-pre-wrap">{m.content || <span className="dot-pulse">● ● ●</span>}</div>
+                                {m.role === 'assistant' && m.translation && (
+                                    <div>{!visibleTranslations[m.id] ? (<div onClick={() => setVisibleTranslations(v=>({...v, [m.id]:true}))} className="show-trans-btn">Показать перевод</div>) : (<div className="translation-text">{m.translation}</div>)}</div>
+                                )}
+                                {m.role === 'user' && m.correction && (<div className="mt-3 bg-black/5 p-3 rounded-xl text-xs border border-black/10 text-black font-medium animate-in fade-in zoom-in duration-300"><div>⭐ Исправлено: {m.correction.corrected}</div><div className="opacity-70 mt-1">{m.correction.explanation}</div></div>) }
+                            </div>
+                        ))}
+                        <div ref={scrollRef} />
+                    </main>
+                    <footer className="bottom-panel">
+                        <div className="suggestions-area">
+                            {!loading && mode === 'with_suggestions' && suggestions.map((s, i) => (<button key={i} onClick={() => { const n = [...messages.filter(m=>m.content).map(m=>({role:m.role,content:m.content})), { role: 'user', content: s.en }]; setMessages(n); handleTriggerAI(n); }} className="suggestion-card active:scale-[0.98]"><div className="en">{s.en}</div><div className="ru">{s.ru}</div></button>))}
+                        </div>
+                        <div className="input-bar">
+                            <input className="flex-1 p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 shadow-inner" placeholder="Ответь..." value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendMessage(input)} disabled={loading} />
+                            <button onClick={() => { if(!loading && input.trim()) { sendMessage(input); } }} className="bg-blue-600 text-white w-12 h-12 rounded-2xl font-black shadow-lg disabled:opacity-50 flex items-center justify-center flex-shrink-0">⮕</button>
+                        </div>
+                    </footer>
+                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} />}
+                    {isAdminOpen && <AdminPanel onClose={()=>setIsAdminOpen(false)} />}
+                    {explanation !== null && (
+                        <div className="modal-overlay" onClick={() => setExplanation(null)}><div className="modal-content" onClick={e => e.stopPropagation()} style={{alignSelf: 'center'}}><div className="p-8 bg-amber-50 border-b border-amber-100 flex justify-between items-center text-amber-800 flex-shrink-0"><h3 className="font-black text-xl uppercase tracking-tighter">💡 Разбор lingvo.ai</h3><button onClick={() => setExplanation(null)} className="p-2 text-3xl">&times;</button></div><div className="p-8 overflow-y-auto modal-body flex-1 flex flex-col items-center">{expLoading ? (<div className="flex flex-col items-center justify-center h-full py-10 gap-6 text-center w-full"><div className="dot-pulse text-5xl text-amber-400 font-black tracking-widest">● ● ●</div><p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse text-center">Анализируем правила...</p></div>) : (<div className="w-full" dangerouslySetInnerHTML={{ __html: marked.parse(explanation || "") }}></div>)}</div><div className="p-8 bg-slate-50 flex justify-between gap-4 flex-shrink-0"><button onClick={downloadFile} className="px-6 py-4 bg-amber-100 border-2 border-amber-200 rounded-2xl font-black text-amber-700 uppercase text-xs transition-all flex-1">💾 Конспект</button><button onClick={() => setExplanation(null)} className="px-6 py-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-600 uppercase text-xs transition-all flex-1">Понятно!</button></div></div></div>
+                    )}
+                </div>
+            );
+        }
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
