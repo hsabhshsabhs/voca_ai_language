@@ -419,16 +419,87 @@
             }
         }
         
-        /* Analysis panel */
+        /* Analysis panel - lesson style */
         .analysis-panel {
             margin-top: 0.75rem;
-            padding: 0.75rem;
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 0.75rem;
-            font-size: 0.8125rem;
-            line-height: 1.6;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            line-height: 1.7;
             color: #e4e4e7;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .analysis-panel h3 {
+            color: #818cf8;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.25rem 0 0.75rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(129, 140, 248, 0.2);
+        }
+        
+        .analysis-panel h4 {
+            color: #a5b4fc;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 1rem 0 0.5rem 0;
+        }
+        
+        .analysis-panel p {
+            margin: 0.5rem 0;
+        }
+        
+        .analysis-panel ul, .analysis-panel ol {
+            margin: 0.5rem 0;
+            padding-left: 1.25rem;
+        }
+        
+        .analysis-panel li {
+            margin: 0.25rem 0;
+        }
+        
+        .analysis-panel code {
+            background: rgba(99, 102, 241, 0.2);
+            color: #c7d2fe;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+        
+        .analysis-panel strong {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.125rem;
+        }
+        
+        .analysis-panel table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.75rem 0;
+            font-size: 0.8rem;
+        }
+        
+        .analysis-panel th, .analysis-panel td {
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.5rem;
+            text-align: left;
+        }
+        
+        .analysis-panel th {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+        }
+        
+        .analysis-panel hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 1rem 0;
         }
         
         .analysis-panel .loading {
@@ -1032,18 +1103,18 @@
                                 {/* AI message controls */}
                                 {m.role === 'assistant' && m.content && (
                                     <div>
-                                        <div className="flex flex-wrap items-center gap-0">
+                                        <div className="flex items-center justify-between gap-2 mt-2">
                                             {!visibleTranslations[m.id] ? (
                                                 <button 
                                                     onClick={() => setVisibleTranslations(v => ({...v, [m.id]: true}))} 
                                                     className="show-trans-btn"
                                                 >
                                                     <Icons.Eye />
-                                                    Показать перевод
+                                                    Перевод
                                                 </button>
-                                            ) : null}
+                                            ) : <div />}
                                             
-                                            {!m.analysis && (
+                                            {!m.analysis ? (
                                                 <button 
                                                     onClick={() => onAnalyze(m.id, m.content)}
                                                     disabled={analysisLoading === m.id}
@@ -1052,7 +1123,7 @@
                                                     <Icons.Help />
                                                     {analysisLoading === m.id ? 'Анализ...' : 'Разбор'}
                                                 </button>
-                                            )}
+                                            ) : <div />}
                                         </div>
                                         
                                         {visibleTranslations[m.id] && m.translation && (
@@ -1060,9 +1131,7 @@
                                         )}
                                         
                                         {m.analysis && (
-                                            <div className="analysis-panel">
-                                                <div className="whitespace-pre-wrap">{m.analysis}</div>
-                                            </div>
+                                            <div className="analysis-panel" dangerouslySetInnerHTML={{__html: m.analysis}} />
                                         )}
                                     </div>
                                 )}
