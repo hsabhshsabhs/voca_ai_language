@@ -155,10 +155,11 @@ async def chat_stream(req: ChatRequest, token: str):
                         except: continue
         
         t_res = await deepseek_call([{"role":"user", "content":f"Translate to Russian (text only): {full_en}"}])
-        s_res = await deepseek_call([{"role":"user", "content":f'Context: {full_en}. Give 2 short reply options the user could say. Return JSON array of objects with "en" (English) and "ru" (Russian translation) keys. Example: [{{"en":"Sure","ru":"Конечно"}}]. Only JSON, no explanation.'}])
         sug = []
-        try: match = re.search(r'\[.*\]', s_res, re.DOTALL); sug = json.loads(match.group(0))[:2]
-        except: pass
+        if req.mode == "with_suggestions":
+            s_res = await deepseek_call([{"role":"user", "content":f'Context: {full_en}. Give 2 short reply options the user could say. Return JSON array of objects with "en" (English) and "ru" (Russian translation) keys. Example: [{{"en":"Sure","ru":"Конечно"}}]. Only JSON, no explanation.'}])
+            try: match = re.search(r'\[.*\]', s_res, re.DOTALL); sug = json.loads(match.group(0))[:2]
+            except: pass
         
         yield "||META||" + json.dumps({"translation": t_res, "suggestions": sug})
 
