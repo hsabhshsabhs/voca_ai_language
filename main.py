@@ -154,10 +154,11 @@ async def chat_stream(req: ChatRequest, token: str):
                             yield chunk
                         except: continue
         
-        t_res = await deepseek_call([{"role":"user", "content":f"Translate to Russian (text only): {full_en}"}])
+        t_res = await deepseek_call([{"role":"user", "content": "Translate to Russian (text only): " + full_en}])
         sug = []
         if req.mode == "with_suggestions":
-            s_res = await deepseek_call([{"role":"user", "content":f'Context: {full_en}. Give 2 short reply options the user could say. Return JSON array of objects with "en" (English) and "ru" (Russian translation) keys. Example: [{{"en":"Sure","ru":"Конечно"}}]. Only JSON, no explanation.'}])
+            s_prompt = 'Context: ' + full_en + '. Give 2 short reply options the user could say. Return JSON array of objects with "en" (English) and "ru" (Russian translation) keys. Example: [{"en":"Sure","ru":"Конечно"}]. Only JSON, no explanation.'
+            s_res = await deepseek_call([{"role":"user", "content": s_prompt}])
             try: match = re.search(r'\[.*\]', s_res, re.DOTALL); sug = json.loads(match.group(0))[:2]
             except: pass
         
@@ -180,7 +181,29 @@ async def analyze_text(req: AnalyzeRequest, token: str):
     if not user:
         raise HTTPException(status_code=401)
     
-    prompt = 'Разбери эту английскую фразу для изучающего язык. Объясни на русском кратко: грамматику, ключевые слова, идиомы (если есть). Фраза: "' + req.text + '"'
+    prompt = '''Ты - преподаватель английского языка. Сделай подробный разбор этой английской фразы для изучающего язык. 
+Ответ должен быть в HTML формате (без DOCTYPE, html, head, body тегов - только содержимое).
+
+Структура разбора:
+1. <h3>Общая структура</h3> - разбей фразу на части и объясни их функции
+2. <h3>Детальный разбор</h3> - для каждой части/предложения:
+   - <h4><code>фраза на английском</code></h4>
+   - Тип предложения
+   - Грамматическая структура (подлежащее, сказуемое, дополнения)
+   - Ключевые слова с объяснениями
+   - Грамматические правила
+3. <h3>Полезные выражения</h3> - похожие фразы для практики
+
+Используй:
+- <strong>текст</strong> для выделения важного
+- <code>английские слова</code> для примеров
+- <ul><li>списки</li></ul> для перечислений
+- <table> для сравнений если нужно
+
+Фраза для разбора: "''' + req.text + '''"
+
+Отвечай ТОЛЬКО HTML кодом, без markdown.'''
+    
     analysis = await deepseek_call([{"role": "user", "content": prompt}])
     return {"analysis": analysis}
 
