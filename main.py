@@ -174,12 +174,14 @@ async def analyze_text(req: AnalyzeRequest, token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user = db.query(User).filter(User.username == payload.get("sub")).first()
-    except: user = None
+    except:
+        user = None
     db.close()
     if not user:
         raise HTTPException(status_code=401)
     
-    analysis = await deepseek_call([{"role":"user", "content":f'Разбери эту английскую фразу для изучающего язык. Объясни на русском кратко: грамматику, ключевые слова, идиомы (если есть). Фраза: "{req.text}"'}])
+    prompt = 'Разбери эту английскую фразу для изучающего язык. Объясни на русском кратко: грамматику, ключевые слова, идиомы (если есть). Фраза: "' + req.text + '"'
+    analysis = await deepseek_call([{"role": "user", "content": prompt}])
     return {"analysis": analysis}
 
 @app.post("/check_grammar")
@@ -188,12 +190,14 @@ async def check_grammar(req: AnalyzeRequest, token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user = db.query(User).filter(User.username == payload.get("sub")).first()
-    except: user = None
+    except:
+        user = None
     db.close()
     if not user:
         raise HTTPException(status_code=401)
     
-    result = await deepseek_call([{"role":"user", "content":f'Check this English text for grammar errors. If there are errors, return JSON: {{"has_errors": true, "original": "...", "corrected": "...", "explanation": "краткое объяснение на русском"}}. If no errors: {{"has_errors": false}}. Text: "{req.text}"'}])
+    prompt = 'Check this English text for grammar errors. If there are errors, return JSON: {"has_errors": true, "original": "...", "corrected": "...", "explanation": "краткое объяснение на русском"}. If no errors: {"has_errors": false}. Text: "' + req.text + '"'
+    result = await deepseek_call([{"role": "user", "content": prompt}])
     try:
         match = re.search(r'\{.*\}', result, re.DOTALL)
         if match:
