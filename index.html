@@ -418,6 +418,75 @@
                 height: calc(60px + env(safe-area-inset-top));
             }
         }
+        
+        /* Analysis panel */
+        .analysis-panel {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 0.75rem;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+            color: #e4e4e7;
+        }
+        
+        .analysis-panel .loading {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #a5b4fc;
+        }
+        
+        /* Correction panel */
+        .correction-panel {
+            margin-top: 0.5rem;
+            padding: 0.625rem 0.75rem;
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+            border-radius: 0.625rem;
+            font-size: 0.8125rem;
+        }
+        
+        .correction-panel .original {
+            color: #fbbf24;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+        
+        .correction-panel .corrected {
+            color: #22c55e;
+            font-weight: 500;
+        }
+        
+        .correction-panel .explanation {
+            color: #a1a1aa;
+            margin-top: 0.25rem;
+            font-size: 0.75rem;
+        }
+        
+        /* Help button */
+        .help-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.375rem 0.625rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 0.5rem;
+            color: #818cf8;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+            margin-right: 0.5rem;
+        }
+        
+        .help-btn:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -508,6 +577,13 @@
             Back: () => (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            ),
+            Help: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
             ),
         };
@@ -895,7 +971,7 @@
             );
         }
 
-        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, visibleTranslations, setVisibleTranslations }) {
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, visibleTranslations, setVisibleTranslations, onAnalyze, analysisLoading, token }) {
             const scrollRef = useRef(null);
 
             useEffect(() => { 
@@ -942,18 +1018,51 @@
                                     </div>
                                 )}
                                 
-                                {m.role === 'assistant' && m.translation && (
+                                {/* User message correction */}
+                                {m.role === 'user' && m.correction && (
+                                    <div className="correction-panel">
+                                        <div><span className="original">{m.correction.original}</span></div>
+                                        <div><span className="corrected">{m.correction.corrected}</span></div>
+                                        {m.correction.explanation && (
+                                            <div className="explanation">{m.correction.explanation}</div>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                {/* AI message controls */}
+                                {m.role === 'assistant' && m.content && (
                                     <div>
-                                        {!visibleTranslations[m.id] ? (
-                                            <button 
-                                                onClick={() => setVisibleTranslations(v => ({...v, [m.id]: true}))} 
-                                                className="show-trans-btn"
-                                            >
-                                                <Icons.Eye />
-                                                Показать перевод
-                                            </button>
-                                        ) : (
+                                        <div className="flex flex-wrap items-center gap-0">
+                                            {!visibleTranslations[m.id] ? (
+                                                <button 
+                                                    onClick={() => setVisibleTranslations(v => ({...v, [m.id]: true}))} 
+                                                    className="show-trans-btn"
+                                                >
+                                                    <Icons.Eye />
+                                                    Показать перевод
+                                                </button>
+                                            ) : null}
+                                            
+                                            {!m.analysis && (
+                                                <button 
+                                                    onClick={() => onAnalyze(m.id, m.content)}
+                                                    disabled={analysisLoading === m.id}
+                                                    className="help-btn"
+                                                >
+                                                    <Icons.Help />
+                                                    {analysisLoading === m.id ? 'Анализ...' : 'Разбор'}
+                                                </button>
+                                            )}
+                                        </div>
+                                        
+                                        {visibleTranslations[m.id] && m.translation && (
                                             <div className="translation-text">{m.translation}</div>
+                                        )}
+                                        
+                                        {m.analysis && (
+                                            <div className="analysis-panel">
+                                                <div className="whitespace-pre-wrap">{m.analysis}</div>
+                                            </div>
                                         )}
                                     </div>
                                 )}
@@ -1016,6 +1125,7 @@
             const [loading, setLoading] = useState(false);
             const [visibleTranslations, setVisibleTranslations] = useState({});
             const [hintsEnabled, setHintsEnabled] = useState(true);
+            const [analysisLoading, setAnalysisLoading] = useState(null);
 
             useEffect(() => { 
                 if (token) {
@@ -1084,14 +1194,29 @@
                 }
             };
 
-            const sendMessage = (text) => {
+            const sendMessage = async (text) => {
                 if (!text.trim() || loading) return;
+                const userMsg = { role: 'user', content: text, id: Date.now() };
                 const next = [
                     ...messages.filter(m => m.content).map(m => ({ role: m.role, content: m.content })), 
                     { role: 'user', content: text }
                 ];
-                setMessages(next); 
-                setInput(''); 
+                setMessages(prev => [...prev.filter(m => m.content), userMsg]); 
+                setInput('');
+                
+                // Check grammar in background
+                fetch(`${API_BASE}/check_grammar?token=${token}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                }).then(r => r.json()).then(data => {
+                    if (data.has_errors) {
+                        setMessages(prev => prev.map(m => 
+                            m.id === userMsg.id ? { ...m, correction: { original: data.original, corrected: data.corrected, explanation: data.explanation } } : m
+                        ));
+                    }
+                }).catch(() => {});
+                
                 handleTriggerAI(next);
             };
 
@@ -1113,6 +1238,27 @@
                 setSuggestions([]);
                 setCharacter('');
                 setSituation('');
+            };
+            
+            const handleAnalyze = async (msgId, content) => {
+                setAnalysisLoading(msgId);
+                try {
+                    const res = await fetch(`${API_BASE}/analyze?token=${token}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: content })
+                    });
+                    const data = await res.json();
+                    if (data.analysis) {
+                        setMessages(prev => prev.map(m => 
+                            m.id === msgId ? { ...m, analysis: data.analysis } : m
+                        ));
+                    }
+                } catch (err) {
+                    console.log("[v0] Analysis error:", err);
+                } finally {
+                    setAnalysisLoading(null);
+                }
             };
 
             return (
@@ -1144,6 +1290,9 @@
                             onShopOpen={() => setIsShopOpen(true)}
                             visibleTranslations={visibleTranslations}
                             setVisibleTranslations={setVisibleTranslations}
+                            onAnalyze={handleAnalyze}
+                            analysisLoading={analysisLoading}
+                            token={token}
                         />
                     )}
                     
