@@ -171,7 +171,7 @@
 
                         <div className="space-y-4">
                             <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
-                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Разговор о запуске ракет" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
                         </div>
 
                         <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg">Начать диалог</button>
@@ -186,14 +186,14 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="analysis-modal" onClick={e=>e.stopPropagation()}>
                         <div className="analysis-modal-header">
-                            <h2 className="font-bold gradient-text">{loading ? "Репетитор изучает..." : "Разбор от lingvo.ai"}</h2>
+                            <h2 className="font-bold gradient-text">{loading ? "Анализирую текст..." : "Разбор от lingvo.ai"}</h2>
                             <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full"><Icons.X /></button>
                         </div>
                         <div className="analysis-modal-content">
                             {loading ? (
                                 <div className="py-8 text-center">
                                     <div className="waiting-animation"><div></div><div></div><div></div></div>
-                                    <p className="text-muted text-sm italic font-medium px-4">Делаю разбор, в среднем это занимает 1 минуту.</p>
+                                    <p className="text-muted text-sm italic font-medium px-4">Делаю разбор, в среднем это занимает менее 1 минуты.</p>
                                 </div>
                             ) : (
                                 <div dangerouslySetInnerHTML={{__html: marked.parse(content)}} />
@@ -498,3 +498,4 @@
     </script>
 </body>
 </html>
+
