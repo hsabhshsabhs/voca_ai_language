@@ -38,23 +38,19 @@ DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 MODEL = "deepseek-chat"
 
 # --- DATABASE CONFIG ---
-# Улучшенная логика подключения к PostgreSQL на Render
 raw_db_url = os.environ.get("DATABASE_URL", "sqlite:///./voca_users.db")
 if raw_db_url.startswith("postgres://"):
     DATABASE_URL = raw_db_url.replace("postgres://", "postgresql://", 1)
 else:
     DATABASE_URL = raw_db_url
 
-# Подключение к БД
 try:
     if "sqlite" in DATABASE_URL:
         engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
     else:
-        # Для Postgres используем pool_pre_ping для стабильности
         engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 except Exception as e:
     logger.error(f"DATABASE CONNECTION ERROR: {e}")
-    # Фолбек на локальную базу, если Postgres не настроен
     engine = create_engine("sqlite:///./voca_users.db", connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -74,7 +70,6 @@ class User(Base):
     message_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-# Создание таблиц
 Base.metadata.create_all(bind=engine)
 
 # --- SECURITY ---
@@ -109,9 +104,7 @@ async def deepseek_call(messages: List[dict]):
 
 # --- BOT LOGIC ---
 async def run_bot_task():
-    if not BOT_TOKEN:
-        logger.warning("BOT_TOKEN is not set. Bot will not start.")
-        return
+    if not BOT_TOKEN: return
     try:
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher(storage=MemoryStorage())
@@ -119,7 +112,7 @@ async def run_bot_task():
 
         @router.message(CommandStart())
         async def cmd_start(message: types.Message):
-            await message.answer("Привет! Я бот поддержки lingvo.ai.\n\nОтправьте сюда чек об оплате или задайте вопрос.")
+            await message.answer("Привет! Я бот поддержки lingvo.ai. Отправьте чек или вопрос.")
 
         @router.message()
         async def handle_bot_msg(message: types.Message):
@@ -128,7 +121,7 @@ async def run_bot_task():
             if message.photo:
                 await bot.send_message(TARGET_GROUP_ID, f"📩 **НОВЫЙ ЧЕК** от {user_info}:")
                 await message.forward(TARGET_GROUP_ID)
-                await message.answer("✅ Чек получен! Мы начислим кредиты скоро.")
+                await message.answer("✅ Чек получен! Начислим 💎 скоро.")
             elif message.text:
                 await bot.send_message(TARGET_GROUP_ID, f"❓ **ВОПРОС** от {user_info}:\n\n{message.text}")
                 await message.answer("📩 Вопрос передан администраторам.")
@@ -162,7 +155,7 @@ async def index():
     try:
         if os.path.exists("index.html"):
             with open("index.html", "r", encoding="utf-8") as f: return f.read()
-        return "<h1>lingvo.ai Backend</h1><p>index.html not found</p>"
+        return "<h1>lingvo.ai</h1><p>index.html not found</p>"
     except Exception as e: return f"<h1>Error</h1><p>{e}</p>"
 
 @app.post("/register")
@@ -189,7 +182,7 @@ async def explain(req: dict, user: User = Depends(get_current_user), db: Session
     if user.credits < 2: raise HTTPException(status_code=402)
     user.credits -= 2
     db.commit()
-    prompt = f"Ты репетитор. Объясни структуру предложения: '{req.get('text', '')}'. Пиши на русском."
+    prompt = f"Ты репетитор. Объясни структуру предложения и правила построения фразы: '{req.get('text', '')}'. Пиши на русском, используй Markdown."
     res = await deepseek_call([{"role": "user", "content": prompt}])
     return {"explanation": res or "Ошибка API"}
 
@@ -213,7 +206,7 @@ async def chat_stream(req: dict, token: str):
     async def gen():
         full_en = ""
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-        system_content = f"YOU ARE: {req['character']}. SCENARIO: {req['situation']}. Short English replies."
+        system_content = f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. Natural short English."
         history = [{"role": "system", "content": system_content}]
         clean_hist = [m for m in req['history'] if m.get("content")]
         if not clean_hist: history.append({"role": "user", "content": "Hello!"})
@@ -233,15 +226,29 @@ async def chat_stream(req: dict, token: str):
         except: yield "||ERROR||Connection error"
         
         t_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Translate to Russian: {full_en}"}]))
-        s_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Context: {full_en}. Give 2 short natural options next. Return ONLY JSON array: [{{'en':'...', 'ru':'...'}}]."}]))
+        s_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Context: {full_en}. Give 2 short natural options for what I should say next. Return ONLY JSON array: [{{'en':'...', 'ru':'...'}}]."}]))
+        
+        user_msg = clean_hist[-1]['content'] if clean_hist and clean_hist[-1]['role'] == 'user' else ""
+        c_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Check this English sentence for errors: '{user_msg}'. If there are errors, return JSON {{'corrected':'...', 'explanation':'...'}} in Russian. If no errors, return word NONE."}])) if user_msg else None
+        
         trans = await t_task
         sug_raw = await s_task
+        corr_raw = await c_task if c_task else "NONE"
+        
         sug = []
         try: 
             match = re.search(r'\[.*\]', str(sug_raw), re.DOTALL)
             if match: sug = json.loads(match.group(0))[:2]
         except: pass
-        yield "||META||" + json.dumps({"translation": trans, "suggestions": sug})
+        
+        corr_data = None
+        if corr_raw and "NONE" not in str(corr_raw):
+            try:
+                match = re.search(r'\{.*\}', str(corr_raw), re.DOTALL)
+                if match: corr_data = json.loads(match.group(0))
+            except: pass
+            
+        yield "||META||" + json.dumps({"translation": trans, "suggestions": sug, "user_correction": corr_data})
 
     return StreamingResponse(gen(), media_type="text/plain")
 
