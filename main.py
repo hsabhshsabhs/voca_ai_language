@@ -62,7 +62,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True, nullable=True)
-    hashed_password = Column(String, nullable=True)
+    hashed_password = Column(String)
     credits = Column(Float, default=50.0)
     reg_ip = Column(String, nullable=True)
     telegram_id = Column(BigInteger, unique=True, nullable=True, index=True)
@@ -92,15 +92,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 # --- UTILS ---
 async def deepseek_call(messages: List[dict]):
-    if not DEEPSEEK_API_KEY: return ""
+    if not DEEPSEEK_API_KEY:
+        logger.error("DEEPSEEK_API_KEY is missing!")
+        return ""
     headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(DEEPSEEK_URL, headers=headers, json={"model": MODEL, "messages": messages}, timeout=45) as resp:
-                if resp.status != 200: return ""
+                if resp.status != 200:
+                    err_body = await resp.text()
+                    logger.error(f"DeepSeek API Error {resp.status}: {err_body}")
+                    return ""
                 data = await resp.json()
                 return data['choices'][0]['message']['content'].strip()
-    except: return ""
+    except Exception as e:
+        logger.error(f"DeepSeek call exception: {traceback.format_exc()}")
+        return ""
 
 # --- BOT LOGIC ---
 async def run_bot_task():
@@ -121,7 +128,7 @@ async def run_bot_task():
             if message.photo:
                 await bot.send_message(TARGET_GROUP_ID, f"📩 **НОВЫЙ ЧЕК** от {user_info}:")
                 await message.forward(TARGET_GROUP_ID)
-                await message.answer("✅ Чек получен! Начислим 💎 скоро.")
+                await message.answer("✅ Чек получен! Мы начислим кредиты скоро.")
             elif message.text:
                 await bot.send_message(TARGET_GROUP_ID, f"❓ **ВОПРОС** от {user_info}:\n\n{message.text}")
                 await message.answer("📩 Вопрос передан администраторам.")
@@ -155,7 +162,7 @@ async def index():
     try:
         if os.path.exists("index.html"):
             with open("index.html", "r", encoding="utf-8") as f: return f.read()
-        return "<h1>lingvo.ai</h1><p>index.html not found</p>"
+        return "<h1>lingvo.ai Backend</h1><p>index.html not found</p>"
     except Exception as e: return f"<h1>Error</h1><p>{e}</p>"
 
 @app.post("/register")
@@ -179,10 +186,11 @@ def me(user: User = Depends(get_current_user)):
 
 @app.post("/explain")
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.credits < 2: raise HTTPException(status_code=402)
+    if user.credits < 2: raise HTTPException(status_code=402, detail="Недостаточно кредитов")
     user.credits -= 2
     db.commit()
-    prompt = f"Ты репетитор. Объясни структуру предложения и правила построения фразы: '{req.get('text', '')}'. Пиши на русском, используй Markdown."
+    text_to_explain = req.get('text', '')
+    prompt = f"Ты репетитор английского. Кратко объясни структуру предложения и правила: '{text_to_explain}'. Пиши на русском, используй Markdown."
     res = await deepseek_call([{"role": "user", "content": prompt}])
     return {"explanation": res or "Ошибка API"}
 
@@ -226,7 +234,7 @@ async def chat_stream(req: dict, token: str):
         except: yield "||ERROR||Connection error"
         
         t_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Translate to Russian: {full_en}"}]))
-        s_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Context: {full_en}. Give 2 short natural options for what I should say next. Return ONLY JSON array: [{{'en':'...', 'ru':'...'}}]."}]))
+        s_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Give 2 short English reply options for: {full_en}. Return ONLY JSON array: [{{'en':'...', 'ru':'...'}}]."}]))
         
         user_msg = clean_hist[-1]['content'] if clean_hist and clean_hist[-1]['role'] == 'user' else ""
         c_task = asyncio.create_task(deepseek_call([{"role":"user", "content":f"Check this English sentence for errors: '{user_msg}'. If there are errors, return JSON {{'corrected':'...', 'explanation':'...'}} in Russian. If no errors, return word NONE."}])) if user_msg else None
