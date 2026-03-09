@@ -486,7 +486,8 @@
                         <ChatScreen 
                             messages={messages} loading={loading} suggestions={suggestions} 
                             showSuggestions={showSuggestions} setShowSuggestions={setShowSuggestions}
-                            input={input} setInput={setInput} onSend={onSend} onBack={()=>setStep('setup')} 
+                            input={input} setInput={setInput} onSend={onSend} 
+                            onBack={()=>{setStep('setup'); setMessages([]); setSuggestions([]); setShowSuggestions(false);}} 
                             credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyze} 
                             analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal}
                         />
