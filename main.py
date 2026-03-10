@@ -127,7 +127,6 @@ def me(user: User = Depends(get_current_user)):
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if user.credits < 1: raise HTTPException(status_code=402)
     user.credits -= 1; db.commit()
-    # High-speed prompt
     prompt = f"Ты репетитор английского. КРАТКО (макс 3-4 пункта) объясни грамматику и структуру: '{req.get('text', '')}'"
     res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=500)
     return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
@@ -146,7 +145,6 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
     async def gen():
         full_en = ""
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-        # Added strict brevity instruction
         history = [{"role": "system", "content": f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. BE VERY CONCISE. MAX 2-3 SHORT SENTENCES. Do not write long descriptions."}]
         clean_hist = [m for m in req.get('history', []) if m.get("content")]
         if not clean_hist: history.append({"role": "user", "content": "Start conversation in English."})
@@ -206,74 +204,80 @@ async def telegram_webhook_test():
 
 @app.post("/webhook/telegram")
 async def telegram_webhook(request: Request):
-    logger.info(f"--- WEBHOOK RAW REQUEST RECEIVED ---")
     try:
         update = await request.json()
-        logger.info(f"Update content: {json.dumps(update, ensure_ascii=False)}")
-    except Exception as e:
-        logger.error(f"Failed to parse JSON from Telegram: {e}")
-        return {"ok": False, "error": "Invalid JSON"}
+    except:
+        return {"ok": False}
     
-    # 1. Handle PreCheckoutQuery (MUST BE FAST)
     if "pre_checkout_query" in update:
         pq = update["pre_checkout_query"]
         pq_id = pq.get("id")
-        logger.info(f"Processing PreCheckoutQuery ID: {pq_id}")
-        
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
-        payload = {"pre_checkout_query_id": pq_id, "ok": True}
-        
         async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(url, json=payload) as resp:
-                    res_text = await resp.text()
-                    logger.info(f"Telegram response to PreCheckout: {res_text}")
-            except Exception as e:
-                logger.error(f"Network error answering PreCheckout: {e}")
+            await session.post(url, json={"pre_checkout_query_id": pq_id, "ok": True})
         return {"ok": True}
 
     message = update.get("message", {})
     
-    # 2. Handle SuccessfulPayment
     if "successful_payment" in message:
         sp = message["successful_payment"]
         payload = sp.get("invoice_payload", "")
-        logger.info(f"SUCCESSFUL PAYMENT! Payload: {payload}")
-        
         if payload.startswith("stars_"):
             try:
                 tg_id = int(payload.split("_")[1])
                 amount = sp["total_amount"]
-                
                 db = SessionLocal()
-                try:
-                    user = db.query(User).filter(User.telegram_id == tg_id).first()
-                    if user:
-                        added = amount * 2
-                        user.credits += added
-                        db.commit()
-                        logger.info(f"CREDITS UPDATED for user {tg_id}: +{added}")
-                    else:
-                        logger.error(f"User {tg_id} not found after payment!")
-                finally:
-                    db.close()
-            except Exception as e:
-                logger.error(f"DB Error after payment: {e}")
+                user = db.query(User).filter(User.telegram_id == tg_id).first()
+                if user:
+                    user.credits += amount * 2
+                    db.commit()
+                db.close()
+            except: pass
         return {"ok": True}
 
-    # 3. Handle /start
     text = message.get("text", "")
     chat_id = message.get("chat", {}).get("id")
-    if text == "/start" and chat_id:
+    user_data = message.get("from", {})
+
+    if text.startswith("/start") and chat_id:
+        db = SessionLocal()
+        user = db.query(User).filter(User.telegram_id == chat_id).first()
+        if not user:
+            # 1. Register new user
+            user = User(telegram_id=chat_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=50.0)
+            db.add(user)
+            db.commit()
+            
+            # 2. Process Referral
+            if "ref_" in text:
+                try:
+                    referrer_id = int(text.split("ref_")[1])
+                    if referrer_id != chat_id: # No self-referral
+                        referrer = db.query(User).filter(User.telegram_id == referrer_id).first()
+                        if referrer:
+                            referrer.credits += 50.0
+                            db.commit()
+                            # Notify referrer
+                            async with aiohttp.ClientSession() as session:
+                                notify_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+                                await session.post(notify_url, json={
+                                    "chat_id": referrer_id,
+                                    "text": f"<b>Ура!</b> 🎉 По твоей ссылке зарегистрировался новый пользователь ({user.first_name or 'Друг'}).\n\nТебе начислено <b>50 токенов</b>! 🎁",
+                                    "parse_mode": "HTML"
+                                })
+                except Exception as e:
+                    logger.error(f"Referral logic error: {e}")
+        db.close()
+
         welcome_text = (
-            "<b>lingvo.ai — твой интерактивный тренажер английского</b>\n\n"
+            "<b>lingvo ai — твой интерактивный тренажер английского</b>\n\n"
             "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-            "1. Любые роли и ситуации\n"
-            "2. Автоматическая проверка ошибок\n"
-            "3. Грамматический разбор по кнопке <b>«?»</b>\n"
-            "4. Умные варианты ответов\n\n"
+            "1. Любые роли и ситуации.\n"
+            "2. Автоматическая проверка ошибок.\n"
+            "3. Грамматический разбор по кнопке <b>«?»</b>.\n"
+            "4. Умные варианты ответов.\n\n"
             "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>\n\n"
-            "<b>Нажми синюю кнопку \"Open\" и начни общение прямо сейчас!</b>"
+            "<b>Нажми на кнопку \"Open\" и начни общение прямо сейчас!</b>"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
@@ -290,4 +294,3 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
