@@ -138,10 +138,10 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         tg_id = payload.get("sub")
         user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
-        if not user or user.credits < 2: return StreamingResponse(iter(["||ERROR||Credits"]), media_type="text/plain")
+        if not user or user.credits < 1: return StreamingResponse(iter(["||ERROR||Credits"]), media_type="text/plain")
     except: return StreamingResponse(iter(["||ERROR||Auth"]), media_type="text/plain")
 
-    user.credits -= 2; db.commit()
+    user.credits -= 1; db.commit()
 
     async def gen():
         full_en = ""
@@ -219,3 +219,4 @@ async def telegram_webhook(update: dict, db: Session = Depends(get_db)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
