@@ -200,25 +200,36 @@ async def create_invoice(req: dict, user: User = Depends(get_current_user)):
             if data.get("ok"): return {"invoice_link": data["result"]}
             raise HTTPException(status_code=500)
 
+@app.get("/webhook/telegram")
+async def telegram_webhook_test():
+    return {"status": "Webhook endpoint is alive. Please use POST for Telegram updates."}
+
 @app.post("/webhook/telegram")
-async def telegram_webhook(update: dict):
-    logger.info(f"--- INCOMING TELEGRAM UPDATE ---")
-    logger.info(json.dumps(update, ensure_ascii=False))
+async def telegram_webhook(request: Request):
+    logger.info(f"--- WEBHOOK RAW REQUEST RECEIVED ---")
+    try:
+        update = await request.json()
+        logger.info(f"Update content: {json.dumps(update, ensure_ascii=False)}")
+    except Exception as e:
+        logger.error(f"Failed to parse JSON from Telegram: {e}")
+        return {"ok": False, "error": "Invalid JSON"}
     
-    # 1. Handle PreCheckoutQuery (MUST BE FAST - No DB required initially)
+    # 1. Handle PreCheckoutQuery (MUST BE FAST)
     if "pre_checkout_query" in update:
         pq = update["pre_checkout_query"]
         pq_id = pq.get("id")
-        logger.info(f"Handling PreCheckoutQuery: ID={pq_id}, UserID={pq.get('from', {}).get('id')}")
+        logger.info(f"Processing PreCheckoutQuery ID: {pq_id}")
         
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
+        payload = {"pre_checkout_query_id": pq_id, "ok": True}
+        
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(url, json={"pre_checkout_query_id": pq_id, "ok": True}) as resp:
-                    res_json = await resp.json()
-                    logger.info(f"Telegram AnswerPreCheckoutQuery Response: {res_json}")
+                async with session.post(url, json=payload) as resp:
+                    res_text = await resp.text()
+                    logger.info(f"Telegram response to PreCheckout: {res_text}")
             except Exception as e:
-                logger.error(f"Error answering PreCheckoutQuery: {str(e)}")
+                logger.error(f"Network error answering PreCheckout: {e}")
         return {"ok": True}
 
     message = update.get("message", {})
@@ -227,7 +238,7 @@ async def telegram_webhook(update: dict):
     if "successful_payment" in message:
         sp = message["successful_payment"]
         payload = sp.get("invoice_payload", "")
-        logger.info(f"PAYMENT SUCCESS RECEIVED: Payload={payload}, Amount={sp.get('total_amount')}")
+        logger.info(f"SUCCESSFUL PAYMENT! Payload: {payload}")
         
         if payload.startswith("stars_"):
             try:
@@ -241,39 +252,26 @@ async def telegram_webhook(update: dict):
                         added = amount * 2
                         user.credits += added
                         db.commit()
-                        logger.info(f"CREDITS ADDED: User {tg_id} +{added} credits. New balance: {user.credits}")
+                        logger.info(f"CREDITS UPDATED for user {tg_id}: +{added}")
                     else:
-                        logger.error(f"PAYMENT ERROR: User {tg_id} not found in database for payment processing.")
+                        logger.error(f"User {tg_id} not found after payment!")
                 finally:
                     db.close()
             except Exception as e:
-                logger.error(f"Critical error processing payment: {str(e)}")
+                logger.error(f"DB Error after payment: {e}")
         return {"ok": True}
 
-    # 3. Handle Commands (Start Message)
+    # 3. Handle /start
     text = message.get("text", "")
     chat_id = message.get("chat", {}).get("id")
-
     if text == "/start" and chat_id:
-        logger.info(f"Processing /start command for chat_id={chat_id}")
         welcome_text = (
-            "Привет! 👋\n\n"
-            "Это lingvo.ai — твой персональный AI-репетитор английского!\n\n\n"
-            "Что я умею:\n\n"
-            " 1. Ролевые игры: Практикуй английский в реальных ситуациях, просто выбери любого собеседника и опиши ситуацию.\n\n"
-            " 2. Проверка грамматики «на лету»: Я автоматически исправлю твои ошибки и объясню правила прямо в чате.\n\n"
-            " 3. Разбор фраз: Нажми на кнопку с вопросом рядом с сообщением для детального грамматического разбора.\n\n"
-            " 4. Если не знаешь, что ответить, я предложу несколько готовых вариантов на выбор.\n\n"
-            "Нажми синюю кнопку «Open», которая находится внизу, чтобы открыть приложение и начать свой первый диалог!\n\n"
-            "Возникли вопросы? Напиши мне ➡ @gameeasyhub"
+            "Привет! 👋\n\nЭто lingvo.ai!\n\n"
+            "Нажми кнопку «Open» внизу, чтобы начать."
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
-            try:
-                await session.post(url, json={"chat_id": chat_id, "text": welcome_text})
-                logger.info(f"Welcome message sent to {chat_id}")
-            except Exception as e:
-                logger.error(f"Error sending welcome message: {str(e)}")
+            await session.post(url, json={"chat_id": chat_id, "text": welcome_text})
         return {"ok": True}
 
     return {"ok": True}
