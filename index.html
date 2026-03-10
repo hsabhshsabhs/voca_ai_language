@@ -230,7 +230,7 @@
                         <div className="space-y-3">
                             {packages.map((p, i) => (
                                 <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
-                                    <div className="font-bold text-lg">{p.credits} кредитов</div>
+                                    <div className="font-bold text-lg">{p.credits} токенов</div>
                                     <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold">{p.stars} ⭐</div>
                                 </button>
                             ))}
@@ -498,4 +498,5 @@
     </script>
 </body>
 </html>
+
 
