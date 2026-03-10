@@ -270,7 +270,7 @@ async def telegram_webhook(request: Request):
         db.close()
 
         welcome_text = (
-            "<b>lingvo ai — твой интерактивный тренажер английского</b>\n\n"
+            "<b>lingvo ai — твой интерактивный тренажер английского.</b>\n\n"
             "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
             "1. Любые роли и ситуации.\n"
             "2. Автоматическая проверка ошибок.\n"
@@ -294,3 +294,4 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
