@@ -136,12 +136,12 @@
         .animate-preset-2 { animation: glow-pulse 4s infinite 2s; }
         .animate-preset-3 { animation: glow-pulse 4s infinite 3s; }
 
-        /* TASK 2: FALLING STARS */
-        .stars-container { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; opacity: 0.6; }
-        .falling-star { position: absolute; top: -20px; color: #fbbf24; font-size: 14px; animation: star-fall linear infinite; }
+        /* TASK 2: FALLING STARS (BACKGROUND EFFECT) */
+        .stars-container { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; opacity: 0.4; }
+        .falling-star { position: absolute; top: -20px; color: #fbbf24; animation: star-fall linear infinite; filter: blur(0.5px); }
         @keyframes star-fall {
-            from { transform: translateY(0) rotate(0deg); opacity: 1; }
-            to { transform: translateY(500px) rotate(360deg); opacity: 0; }
+            from { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+            to { transform: translateY(600px) rotate(360deg); opacity: 0; }
         }
     </style>
 </head>
@@ -255,28 +255,36 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        {/* TASK 2: FALLING STARS CONTAINER */}
+                        {/* TASK 2: FALLING STARS (BACKGROUND) */}
                         <div className="stars-container">
-                            {[...Array(12)].map((_, i) => (
+                            {[...Array(18)].map((_, i) => (
                                 <div 
                                     key={i} 
                                     className="falling-star"
                                     style={{
                                         left: `${Math.random() * 100}%`,
-                                        animationDuration: `${2 + Math.random() * 3}s`,
-                                        animationDelay: `${Math.random() * 5}s`
+                                        animationDuration: `${3 + Math.random() * 4}s`,
+                                        animationDelay: `${Math.random() * 5}s`,
+                                        fontSize: `${10 + Math.random() * 10}px`,
+                                        opacity: 0.3 + Math.random() * 0.5
                                     }}
                                 >⭐</div>
                             ))}
                         </div>
                         
+                        {/* Content is relative z-10 to stay ON TOP of stars */}
                         <div className="relative z-10">
-                            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display">Магазин Stars</h2><button onClick={onClose}><Icons.X /></button></div>
+                            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display">Магазин Stars</h2><button onClick={onClose} className="hover:bg-surfaceHover p-2 rounded-full transition-colors"><Icons.X /></button></div>
                             <div className="space-y-3">
                                 {packages.map((p, i) => (
-                                    <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
-                                        <div className="font-bold text-lg">{p.credits} токенов</div>
-                                        <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold">{p.stars} ⭐</div>
+                                    <button 
+                                        key={i} 
+                                        onClick={() => buy(p.stars)} 
+                                        disabled={loading} 
+                                        className="w-full p-4 bg-surface/90 backdrop-blur-sm border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95 group relative overflow-hidden"
+                                    >
+                                        <div className="font-bold text-lg relative z-10">{p.credits} токенов</div>
+                                        <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold relative z-10 group-hover:bg-accent group-hover:text-white transition-colors">{p.stars} ⭐</div>
                                     </button>
                                 ))}
                             </div>
@@ -366,8 +374,8 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
-                        <h2 className="text-2xl font-bold mb-4 font-display">Токены закончились</h2>
-                        <p className="text-muted mb-8">Для продолжения обучения необходимо пополнить баланс в магазине Stars.</p>
+                        <h2 className="text-2xl font-bold mb-4 font-display text-white">Токены закончились</h2>
+                        <p className="text-muted mb-8 leading-relaxed">Для продолжения обучения необходимо пополнить баланс в магазине Stars.</p>
                         <button onClick={onClose} className="btn-primary">Перейти в магазин</button>
                     </div>
                 </div>
