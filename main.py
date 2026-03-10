@@ -48,7 +48,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True, index=True)
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
-    credits = Column(Float, default=10.0)
+    credits = Column(Float, default=50.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -115,7 +115,7 @@ async def auth_telegram(req: dict, db: Session = Depends(get_db)):
     tg_id = user_data.get("id")
     user = db.query(User).filter(User.telegram_id == tg_id).first()
     if not user:
-        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=20.0)
+        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=50.0)
         db.add(user); db.commit(); db.refresh(user)
     return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
 
@@ -219,4 +219,5 @@ async def telegram_webhook(update: dict, db: Session = Depends(get_db)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
