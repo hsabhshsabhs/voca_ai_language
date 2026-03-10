@@ -138,10 +138,12 @@
 
         /* TASK 2: FALLING STARS (BACKGROUND EFFECT) */
         .stars-container { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; opacity: 0.5; }
-        .falling-star { position: absolute; top: -10%; color: #fbbf24; animation: star-fall linear infinite; filter: blur(0.3px); }
+        .falling-star { position: absolute; top: 0; color: #fbbf24; animation: star-fall linear infinite; filter: blur(0.3px); opacity: 0; }
         @keyframes star-fall {
-            from { transform: translateY(0) rotate(0deg); opacity: 0.8; }
-            to { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
         }
     </style>
 </head>
@@ -194,7 +196,7 @@
                                         className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}
                                     >
                                         <div className="font-semibold text-sm">{p.label}</div>
-                                        {/* TASK 1: Removed 'uppercase' class */}
+                                        {/* TASK 1: Description with normal casing */}
                                         <div className="text-[10px] text-muted tracking-tight">{p.labelSit}</div>
                                     </button>
                                 ))}
@@ -257,7 +259,7 @@
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
-                    {/* TASK 2: Negative animation-delay to distribute stars immediately */}
+                    {/* TASK 2: STARS WITH FADE-IN AND OFFSET TO PREVENT STICKING */}
                     <div className="stars-container">
                         {[...Array(20)].map((_, i) => (
                             <div 
@@ -267,7 +269,8 @@
                                     left: `${Math.random() * 100}%`,
                                     animationDuration: `${3 + Math.random() * 5}s`,
                                     animationDelay: `${-Math.random() * 10}s`,
-                                    fontSize: `${10 + Math.random() * 15}px`
+                                    fontSize: `${10 + Math.random() * 15}px`,
+                                    animationFillMode: 'both'
                                 }}
                             >⭐</div>
                         ))}
