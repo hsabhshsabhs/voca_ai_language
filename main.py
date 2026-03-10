@@ -202,22 +202,51 @@ async def create_invoice(req: dict, user: User = Depends(get_current_user)):
 
 @app.post("/webhook/telegram")
 async def telegram_webhook(update: dict, db: Session = Depends(get_db)):
+    # 1. Handle Commands (Start Message)
+    message = update.get("message", {})
+    text = message.get("text", "")
+    chat_id = message.get("chat", {}).get("id")
+
+    if text == "/start" and chat_id:
+        welcome_text = (
+            "Привет! 👋\n\n"
+            "Это lingvo.ai — твой персональный AI-репетитор английского!\n\n\n"
+            "Что я умею:\n\n"
+            " 1. Ролевые игры: Практикуй английский в реальных ситуациях, просто выбери любого собеседника и опиши ситуацию.\n\n"
+            " 2. Проверка грамматики «на лету»: Я автоматически исправлю твои ошибки и объясню правила прямо в чате.\n\n"
+            " 3. Разбор фраз: Нажми на кнопку с вопросом рядом с сообщением для детального грамматического разбора.\n\n"
+            " 4. Если не знаешь, что ответить, я предложу несколько готовых вариантов на выбор.\n\n"
+            "Нажми синюю кнопку «Open», которая находится внизу, чтобы открыть приложение и начать свой первый диалог!\n\n"
+            "Возникли вопросы? Напиши мне ➡ @gameeasyhub"
+        )
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        async with aiohttp.ClientSession() as session:
+            await session.post(url, json={"chat_id": chat_id, "text": welcome_text})
+        return {"ok": True}
+
+    # 2. Handle PreCheckoutQuery (Must answer OK within 10s)
     if "pre_checkout_query" in update:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
         async with aiohttp.ClientSession() as session:
             await session.post(url, json={"pre_checkout_query_id": update["pre_checkout_query"]["id"], "ok": True})
-    message = update.get("message", {})
+        return {"ok": True}
+
+    # 3. Handle SuccessfulPayment
     if "successful_payment" in message:
-        payload = message["successful_payment"]["invoice_payload"]
+        sp = message["successful_payment"]
+        payload = sp["invoice_payload"]
         if payload.startswith("stars_"):
             tg_id = int(payload.split("_")[1])
-            amount = message["successful_payment"]["total_amount"]
+            amount = sp["total_amount"]
             user = db.query(User).filter(User.telegram_id == tg_id).first()
-            if user: user.credits += amount * 2; db.commit()
+            if user:
+                user.credits += amount * 2
+                db.commit()
+                logger.info(f"User {tg_id} paid {amount} Stars. Added {amount*2} credits.")
+    
     return {"ok": True}
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
 
