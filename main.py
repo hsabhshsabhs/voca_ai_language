@@ -201,13 +201,61 @@ async def create_invoice(req: dict, user: User = Depends(get_current_user)):
             raise HTTPException(status_code=500)
 
 @app.post("/webhook/telegram")
-async def telegram_webhook(update: dict, db: Session = Depends(get_db)):
-    # 1. Handle Commands (Start Message)
+async def telegram_webhook(update: dict):
+    logger.info(f"--- INCOMING TELEGRAM UPDATE ---")
+    logger.info(json.dumps(update, ensure_ascii=False))
+    
+    # 1. Handle PreCheckoutQuery (MUST BE FAST - No DB required initially)
+    if "pre_checkout_query" in update:
+        pq = update["pre_checkout_query"]
+        pq_id = pq.get("id")
+        logger.info(f"Handling PreCheckoutQuery: ID={pq_id}, UserID={pq.get('from', {}).get('id')}")
+        
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(url, json={"pre_checkout_query_id": pq_id, "ok": True}) as resp:
+                    res_json = await resp.json()
+                    logger.info(f"Telegram AnswerPreCheckoutQuery Response: {res_json}")
+            except Exception as e:
+                logger.error(f"Error answering PreCheckoutQuery: {str(e)}")
+        return {"ok": True}
+
     message = update.get("message", {})
+    
+    # 2. Handle SuccessfulPayment
+    if "successful_payment" in message:
+        sp = message["successful_payment"]
+        payload = sp.get("invoice_payload", "")
+        logger.info(f"PAYMENT SUCCESS RECEIVED: Payload={payload}, Amount={sp.get('total_amount')}")
+        
+        if payload.startswith("stars_"):
+            try:
+                tg_id = int(payload.split("_")[1])
+                amount = sp["total_amount"]
+                
+                db = SessionLocal()
+                try:
+                    user = db.query(User).filter(User.telegram_id == tg_id).first()
+                    if user:
+                        added = amount * 2
+                        user.credits += added
+                        db.commit()
+                        logger.info(f"CREDITS ADDED: User {tg_id} +{added} credits. New balance: {user.credits}")
+                    else:
+                        logger.error(f"PAYMENT ERROR: User {tg_id} not found in database for payment processing.")
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.error(f"Critical error processing payment: {str(e)}")
+        return {"ok": True}
+
+    # 3. Handle Commands (Start Message)
     text = message.get("text", "")
     chat_id = message.get("chat", {}).get("id")
 
     if text == "/start" and chat_id:
+        logger.info(f"Processing /start command for chat_id={chat_id}")
         welcome_text = (
             "Привет! 👋\n\n"
             "Это lingvo.ai — твой персональный AI-репетитор английского!\n\n\n"
@@ -221,29 +269,13 @@ async def telegram_webhook(update: dict, db: Session = Depends(get_db)):
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
-            await session.post(url, json={"chat_id": chat_id, "text": welcome_text})
+            try:
+                await session.post(url, json={"chat_id": chat_id, "text": welcome_text})
+                logger.info(f"Welcome message sent to {chat_id}")
+            except Exception as e:
+                logger.error(f"Error sending welcome message: {str(e)}")
         return {"ok": True}
 
-    # 2. Handle PreCheckoutQuery (Must answer OK within 10s)
-    if "pre_checkout_query" in update:
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
-        async with aiohttp.ClientSession() as session:
-            await session.post(url, json={"pre_checkout_query_id": update["pre_checkout_query"]["id"], "ok": True})
-        return {"ok": True}
-
-    # 3. Handle SuccessfulPayment
-    if "successful_payment" in message:
-        sp = message["successful_payment"]
-        payload = sp["invoice_payload"]
-        if payload.startswith("stars_"):
-            tg_id = int(payload.split("_")[1])
-            amount = sp["total_amount"]
-            user = db.query(User).filter(User.telegram_id == tg_id).first()
-            if user:
-                user.credits += amount * 2
-                db.commit()
-                logger.info(f"User {tg_id} paid {amount} Stars. Added {amount*2} credits.")
-    
     return {"ok": True}
 
 if __name__ == "__main__":
