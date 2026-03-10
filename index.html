@@ -171,7 +171,7 @@
 
                         <div className="space-y-4">
                             <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
-                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Разговор о запуске ракет" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
                         </div>
 
                         <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg">Начать диалог</button>
@@ -186,14 +186,14 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="analysis-modal" onClick={e=>e.stopPropagation()}>
                         <div className="analysis-modal-header">
-                            <h2 className="font-bold gradient-text">{loading ? "Репетитор изучает..." : "Разбор от lingvo.ai"}</h2>
+                            <h2 className="font-bold gradient-text">{loading ? "Анализирую текст..." : "Разбор от lingvo.ai"}</h2>
                             <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full"><Icons.X /></button>
                         </div>
                         <div className="analysis-modal-content">
                             {loading ? (
                                 <div className="py-8 text-center">
                                     <div className="waiting-animation"><div></div><div></div><div></div></div>
-                                    <p className="text-muted text-sm italic font-medium px-4">Делаю разбор, в среднем это занимает 1 минуту.</p>
+                                    <p className="text-muted text-sm italic font-medium px-4">Делаю разбор, в среднем это занимает менее 1 минуты.</p>
                                 </div>
                             ) : (
                                 <div dangerouslySetInnerHTML={{__html: marked.parse(content)}} />
@@ -230,7 +230,7 @@
                         <div className="space-y-3">
                             {packages.map((p, i) => (
                                 <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
-                                    <div className="font-bold text-lg">{p.credits} кредитов</div>
+                                    <div className="font-bold text-lg">{p.credits} токенов</div>
                                     <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold">{p.stars} ⭐</div>
                                 </button>
                             ))}
@@ -256,24 +256,25 @@
                     <main className="chat-zone">
                         {messages.map((m, i) => {
                             const isLast = i === messages.length - 1;
-                            const showPulse = m.role === 'assistant' && !m.content;
+                            // ASSISTANT BUBBLE: Only show content if translation is present AND not loading
+                            const isAiLoading = m.role === 'assistant' && (!m.translation || (isLast && loading));
                             
                             return (
                                 <div key={m.id || i} className={`bubble ${m.role==='user'?'user':'ai'}`}>
                                     {m.content && (
                                         <div 
                                             onClick={() => {
-                                                if (loading) return;
+                                                if (loading || isAiLoading) return;
                                                 m.analysis 
                                                     ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false })
                                                     : onAnalyze(m.id, m.content);
                                             }} 
-                                            className={`explain-btn ${loading ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}
+                                            className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}
                                         >?</div>
                                     )}
                                     
                                     <div className="whitespace-pre-wrap font-medium">
-                                        {showPulse ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}
+                                        {isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}
                                     </div>
                                     
                                     {m.role === 'user' && m.correction && (
@@ -284,7 +285,7 @@
                                         </div>
                                     )}
 
-                                    {m.role === 'assistant' && m.content && m.translation && (
+                                    {m.role === 'assistant' && !isAiLoading && m.translation && (
                                         <div className="mt-2 pt-2 border-t border-borderLight">
                                             {!visTrans[m.id] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[m.id]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}
                                         </div>
@@ -328,12 +329,6 @@
             const [analysisLoading, setAnalysisLoading] = useState(null);
             const [analysisModal, setAnalysisModal] = useState({ isOpen: false, content: '', loading: false });
             const [isShopOpen, setIsShopOpen] = useState(false);
-
-            // LOGIC FOR NO CREDITS
-            const handleNoCredits = () => {
-                alert("У вас закончились кредиты. Пожалуйста, пополните баланс в магазине, чтобы продолжить обучение.");
-                setIsShopOpen(true);
-            };
 
             const authenticate = async () => {
                 if (!tg?.initData) return;
@@ -390,19 +385,9 @@
                         const chunk = value ? decoder.decode(value, { stream: true }) : "";
                         streamBuffer += chunk;
                         
-                        // CHECK FOR CREDIT ERROR
-                        if (streamBuffer.includes("||ERROR||Credits")) {
-                            setMessages(prev => prev.slice(0, -1));
-                            setLoading(false);
-                            handleNoCredits();
-                            return;
-                        }
-
                         if (streamBuffer.includes("||META||")) {
                             const parts = streamBuffer.split("||META||");
-                            const contentChunk = parts[0];
-                            fullContent += contentChunk;
-                            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent } : m));
+                            fullContent += parts[0];
                             
                             try {
                                 const meta = JSON.parse(parts[1]);
@@ -420,18 +405,46 @@
                                     return next;
                                 });
                                 setSuggestions(meta.suggestions || []);
-                            } catch(e) {}
-                            if (done) break;
-                        } else {
-                            // REGULAR STREAMING
-                            fullContent += chunk;
-                            if (fullContent) {
-                                setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent } : m));
+                            } catch(e) { 
+                                setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
                             }
-                            if (done) break;
+                            setLoading(false);
+                            break; 
+                        } else if (done) {
+                            if (streamBuffer.includes("||META||")) {
+                                const parts = streamBuffer.split("||META||");
+                                fullContent += parts[0];
+                                try {
+                                    const meta = JSON.parse(parts[1]);
+                                    setMessages(prev => {
+                                        const next = [...prev];
+                                        const aiIdx = next.findIndex(m => m.id === aiMsgId);
+                                        if (aiIdx !== -1) {
+                                            next[aiIdx].translation = meta.translation;
+                                            next[aiIdx].content = fullContent;
+                                        }
+                                        return next;
+                                    });
+                                    setSuggestions(meta.suggestions || []);
+                                } catch(e) {
+                                    setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
+                                }
+                            } else {
+                                fullContent += streamBuffer;
+                                setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
+                            }
+                            break;
+                        } else {
+                            // Collect, but don't show yet to keep pulse visible
+                            if (!streamBuffer.includes("||META||")) {
+                                fullContent += ""; 
+                            }
                         }
                     }
-                } catch(e) { setLoading(false); } finally { fetchCredits(); }
+                } catch(e) { 
+                    setLoading(false); 
+                    setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "Error", translation: "Check connection" } : m));
+                } finally { fetchCredits(); }
             };
 
             const onSend = (txt) => {
@@ -450,14 +463,6 @@
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ text: txt })
                     });
-                    
-                    // CHECK FOR ANALYZE CREDIT ERROR
-                    if (res.status === 402 || res.status === 400) {
-                        setAnalysisModal(prev => ({ ...prev, isOpen: false }));
-                        handleNoCredits();
-                        return;
-                    }
-
                     const data = await res.json();
                     setMessages(prev => prev.map(m => m.id === id ? { ...m, analysis: data.explanation } : m));
                     setAnalysisModal(prev => ({ ...prev, content: data.explanation, loading: false }));
@@ -493,3 +498,4 @@
     </script>
 </body>
 </html>
+
