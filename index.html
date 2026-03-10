@@ -339,6 +339,21 @@
             );
         }
 
+        function MobileOnlyScreen() {
+            return (
+                <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-10 text-center">
+                    <div className="w-24 h-24 bg-accent/10 rounded-3xl flex items-center justify-center mb-8 animate-bounce">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    </div>
+                    <h2 className="text-2xl font-bold mb-4 font-display gradient-text text-white">Только для мобильных устройств</h2>
+                    <p className="text-muted leading-relaxed">Извини, но lingvo.ai оптимизирован для работы на смартфонах. Пожалуйста, открой это приложение через мобильную версию Telegram для лучшего опыта обучения. 📱</p>
+                    <div className="mt-10 p-4 border border-border rounded-2xl bg-surface/50 text-xs text-muted">
+                        Версия для ПК временно недоступна
+                    </div>
+                </div>
+            );
+        }
+
         function App() {
             const [token, setToken] = useState(localStorage.getItem('lingvo_token'));
             const [credits, setCredits] = useState(0);
@@ -353,6 +368,10 @@
             const [analysisModal, setAnalysisModal] = useState({ isOpen: false, content: '', loading: false });
             const [isShopOpen, setIsShopOpen] = useState(false);
             const [isLowBalanceOpen, setIsLowBalanceOpen] = useState(false);
+
+            // Platform check
+            const platform = tg?.platform || 'unknown';
+            const isPC = ['tdesktop', 'web', 'macos'].includes(platform);
 
             const authenticate = async () => {
                 if (!tg?.initData) return;
@@ -470,7 +489,6 @@
                             }
                             break;
                         } else {
-                            // Collect, but don't show yet to keep pulse visible
                             if (!streamBuffer.includes("||META||")) {
                                 fullContent += ""; 
                             }
@@ -518,6 +536,7 @@
                 setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup');
             };
 
+            if (isPC) return <MobileOnlyScreen />;
             if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
             if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
             
@@ -543,4 +562,3 @@
     </script>
 </body>
 </html>
-
