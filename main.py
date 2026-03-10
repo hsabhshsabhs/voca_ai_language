@@ -276,7 +276,7 @@ async def telegram_webhook(request: Request):
             "2. Автоматическая проверка ошибок.\n"
             "3. Грамматический разбор по кнопке <b>«?»</b>.\n"
             "4. Умные варианты ответов.\n\n"
-            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>\.n\n"
+            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>.\n\n"
             "<b>Нажми на кнопку \"Open\" и начни общение прямо сейчас!</b>"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -294,5 +294,6 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
