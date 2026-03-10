@@ -230,7 +230,7 @@
                         <div className="space-y-3">
                             {packages.map((p, i) => (
                                 <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
-                                    <div className="font-bold text-lg">{p.credits} токенов</div>
+                                    <div className="font-bold text-lg">{p.credits} кредитов</div>
                                     <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold">{p.stars} ⭐</div>
                                 </button>
                             ))}
@@ -329,6 +329,7 @@
             const [analysisModal, setAnalysisModal] = useState({ isOpen: false, content: '', loading: false });
             const [isShopOpen, setIsShopOpen] = useState(false);
 
+            // LOGIC FOR NO CREDITS
             const handleNoCredits = () => {
                 alert("У вас закончились кредиты. Пожалуйста, пополните баланс в магазине, чтобы продолжить обучение.");
                 setIsShopOpen(true);
@@ -389,6 +390,7 @@
                         const chunk = value ? decoder.decode(value, { stream: true }) : "";
                         streamBuffer += chunk;
                         
+                        // CHECK FOR CREDIT ERROR
                         if (streamBuffer.includes("||ERROR||Credits")) {
                             setMessages(prev => prev.slice(0, -1));
                             setLoading(false);
@@ -421,6 +423,7 @@
                             } catch(e) {}
                             if (done) break;
                         } else {
+                            // REGULAR STREAMING
                             fullContent += chunk;
                             if (fullContent) {
                                 setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent } : m));
@@ -448,6 +451,7 @@
                         body: JSON.stringify({ text: txt })
                     });
                     
+                    // CHECK FOR ANALYZE CREDIT ERROR
                     if (res.status === 402 || res.status === 400) {
                         setAnalysisModal(prev => ({ ...prev, isOpen: false }));
                         handleNoCredits();
