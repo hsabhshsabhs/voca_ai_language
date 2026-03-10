@@ -266,20 +266,23 @@ async def telegram_webhook(request: Request):
     chat_id = message.get("chat", {}).get("id")
     if text == "/start" and chat_id:
         welcome_text = (
-            welcome_text = (
-    "<b>lingvo.ai — твой интерактивный тренажер английского</b>\n\n"
-    "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-    "1. Любые роли и ситуации\n"
-    "2. Автоматическая проверка ошибок\n"
-    "3. Грамматический разбор по кнопке <b>«?»</b>\n"
-    "4. Умные варианты ответов\n\n"
-    "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>\n\n"
-    "<b>Нажми синюю кнопку \"Open\" и начни общение прямо сейчас!</b>"
-)
+            "<b>lingvo.ai — твой интерактивный тренажер английского</b>\n\n"
+            "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
+            "1. Любые роли и ситуации\n"
+            "2. Автоматическая проверка ошибок\n"
+            "3. Грамматический разбор по кнопке <b>«?»</b>\n"
+            "4. Умные варианты ответов\n\n"
+            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>\n\n"
+            "<b>Нажми синюю кнопку \"Open\" и начни общение прямо сейчас!</b>"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
-            await session.post(url, json={"chat_id": chat_id, "text": welcome_text})
+            await session.post(url, json={
+                "chat_id": chat_id, 
+                "text": welcome_text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": False
+            })
         return {"ok": True}
 
     return {"ok": True}
@@ -287,6 +290,4 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
-
 
