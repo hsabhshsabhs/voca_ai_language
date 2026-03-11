@@ -48,7 +48,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True, index=True)
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
-    credits = Column(Float, default=100.0)
+    credits = Column(Float, default=100.0) # Стартовый баланс 100
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -209,83 +209,101 @@ async def telegram_webhook(request: Request):
     except:
         return {"ok": False}
     
+    # 1. PreCheckout
     if "pre_checkout_query" in update:
         pq = update["pre_checkout_query"]
-        pq_id = pq.get("id")
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
         async with aiohttp.ClientSession() as session:
-            await session.post(url, json={"pre_checkout_query_id": pq_id, "ok": True})
+            await session.post(url, json={"pre_checkout_query_id": pq["id"], "ok": True})
+        return {"ok": True}
+
+    # 2. Callback Queries (Affiliate Button)
+    if "callback_query" in update:
+        cb = update["callback_query"]
+        if cb.get("data") == "affiliate_info":
+            user_id = cb["from"]["id"]
+            async with aiohttp.ClientSession() as session:
+                bot_resp = await session.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
+                bot_data = await bot_resp.json()
+                bot_username = bot_data.get("result", {}).get("username", "lingvo_ai_bot")
+                
+                aff_text = (
+                    "<b>💼 Партнерская программа lingvo.ai</b>\n\n"
+                    "Стань нашим амбассадором и получай двойную выгоду:\n\n"
+                    "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n"
+                    "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга в течение <b>6 месяцев</b>!\n\n"
+                    f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
+                )
+                url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+                await session.post(url, json={
+                    "chat_id": user_id,
+                    "text": aff_text,
+                    "parse_mode": "HTML",
+                    "reply_markup": {
+                        "inline_keyboard": [[{"text": "🚀 Пригласить друзей", "url": f"https://t.me/share/url?url=https://t.me/{bot_username}?start=ref_{user_id}&text=Практикуй%20английский%20с%20AI%20в%20lingvo.ai!%20По%20моей%20ссылке%20получишь%20+100%20токенов%20на%20старт%20🎁"}]]
+                    }
+                })
         return {"ok": True}
 
     message = update.get("message", {})
     
+    # 3. Successful Payment
     if "successful_payment" in message:
         sp = message["successful_payment"]
         payload = sp.get("invoice_payload", "")
         if payload.startswith("stars_"):
             try:
                 tg_id = int(payload.split("_")[1])
-                amount = sp["total_amount"]
                 db = SessionLocal()
                 user = db.query(User).filter(User.telegram_id == tg_id).first()
                 if user:
-                    user.credits += amount * 2
+                    user.credits += sp["total_amount"] * 2
                     db.commit()
                 db.close()
             except: pass
         return {"ok": True}
 
+    # 4. Commands (/start)
     text = message.get("text", "")
     chat_id = message.get("chat", {}).get("id")
-    user_data = message.get("from", {})
-
     if text.startswith("/start") and chat_id:
         db = SessionLocal()
         user = db.query(User).filter(User.telegram_id == chat_id).first()
         if not user:
-            # 1. Register new user
-            user = User(telegram_id=chat_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=100.0)
-            db.add(user)
-            db.commit()
-            
-            # 2. Process Referral
+            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=100.0)
+            db.add(user); db.commit()
             if "ref_" in text:
                 try:
-                    referrer_id = int(text.split("ref_")[1])
-                    if referrer_id != chat_id: # No self-referral
-                        referrer = db.query(User).filter(User.telegram_id == referrer_id).first()
+                    ref_id = int(text.split("ref_")[1])
+                    if ref_id != chat_id:
+                        referrer = db.query(User).filter(User.telegram_id == ref_id).first()
                         if referrer:
-                            referrer.credits += 100.0
-                            db.commit()
-                            # Notify referrer
+                            referrer.credits += 100.0; db.commit()
                             async with aiohttp.ClientSession() as session:
-                                notify_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-                                await session.post(notify_url, json={
-                                    "chat_id": referrer_id,
-                                    "text": f"<b>Ура!</b> 🎉 По твоей ссылке зарегистрировался новый пользователь ({user.first_name or 'Друг'}).\n\nТебе начислено <b>100 токенов</b>! 🎁",
+                                await session.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
+                                    "chat_id": ref_id,
+                                    "text": "<b>Ура!</b> 🎉 По твоей ссылке новый пользователь! Тебе начислено <b>100 токенов</b> 🎁 и <b>20%</b> от его будущих покупок.",
                                     "parse_mode": "HTML"
                                 })
-                except Exception as e:
-                    logger.error(f"Referral logic error: {e}")
+                except: pass
         db.close()
 
         welcome_text = (
-            "<b>lingvo ai — твой интерактивный тренажер английского.</b>\n\n"
+            "<b>lingvo.ai — твой интерактивный тренажер английского</b>\n\n"
             "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-            "1. Любые роли и ситуации.\n"
-            "2. Автоматическая проверка ошибок.\n"
-            "3. Грамматический разбор по кнопке <b>«?»</b>.\n"
-            "4. Умные варианты ответов.\n\n"
-            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>.\n\n"
-            "<b>Нажми на кнопку \"Open\" и начни общение прямо сейчас!</b>"
+            "1. Любые роли и ситуации\n"
+            "2. Автоматическая проверка ошибок\n"
+            "3. Грамматический разбор по кнопке <b>«?»</b>\n"
+            "4. Умные варианты ответов\n\n"
+            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>\n\n"
+            "💰 <b>Зарабатывай вместе с нами!</b> Получай +100 токенов за друга и 20% от его покупок.\n\n"
+            "<b>Нажми синюю кнопку \"Open\" и начни общение прямо сейчас!</b>"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
             await session.post(url, json={
-                "chat_id": chat_id, 
-                "text": welcome_text,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": False
+                "chat_id": chat_id, "text": welcome_text, "parse_mode": "HTML", "disable_web_page_preview": False,
+                "reply_markup": {"inline_keyboard": [[{"text": "💼 Партнерская программа", "callback_data": "affiliate_info"}]]}
             })
         return {"ok": True}
 
@@ -294,7 +312,3 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
-
-
-
