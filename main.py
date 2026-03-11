@@ -48,7 +48,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True, index=True)
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
-    credits = Column(Float, default=50.0)
+    credits = Column(Float, default=100.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -115,7 +115,7 @@ async def auth_telegram(req: dict, db: Session = Depends(get_db)):
     tg_id = user_data.get("id")
     user = db.query(User).filter(User.telegram_id == tg_id).first()
     if not user:
-        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=50.0)
+        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=100.0)
         db.add(user); db.commit(); db.refresh(user)
     return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
 
@@ -244,7 +244,7 @@ async def telegram_webhook(request: Request):
         user = db.query(User).filter(User.telegram_id == chat_id).first()
         if not user:
             # 1. Register new user
-            user = User(telegram_id=chat_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=50.0)
+            user = User(telegram_id=chat_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=100.0)
             db.add(user)
             db.commit()
             
@@ -255,14 +255,14 @@ async def telegram_webhook(request: Request):
                     if referrer_id != chat_id: # No self-referral
                         referrer = db.query(User).filter(User.telegram_id == referrer_id).first()
                         if referrer:
-                            referrer.credits += 50.0
+                            referrer.credits += 100.0
                             db.commit()
                             # Notify referrer
                             async with aiohttp.ClientSession() as session:
                                 notify_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
                                 await session.post(notify_url, json={
                                     "chat_id": referrer_id,
-                                    "text": f"<b>Ура!</b> 🎉 По твоей ссылке зарегистрировался новый пользователь ({user.first_name or 'Друг'}).\n\nТебе начислено <b>50 токенов</b>! 🎁",
+                                    "text": f"<b>Ура!</b> 🎉 По твоей ссылке зарегистрировался новый пользователь ({user.first_name or 'Друг'}).\n\nТебе начислено <b>100 токенов</b>! 🎁",
                                     "parse_mode": "HTML"
                                 })
                 except Exception as e:
@@ -294,6 +294,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
