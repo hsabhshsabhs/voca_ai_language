@@ -75,15 +75,15 @@
         .modal-overlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); z-index: 1000; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
         .modal-content { background: #111118; width: 100%; max-width: 420px; border-radius: 1.5rem; padding: 1.5rem; border: 1px solid #2a2a3e; position: relative; z-index: 100; }
         
-        .explain-btn { width: 30px; height: 30px; background: rgba(251, 191, 36, 0.1); color: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; position: absolute; right: -40px; top: 5px; border: 1px solid rgba(251, 191, 36, 0.3); transition: all 0.2s; z-index: 10; cursor: pointer; }
+        .explain-btn { width: 30px; height: 30px; background: rgba(251, 191, 36, 0.1); color: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; border: 1px solid rgba(251, 191, 36, 0.3); transition: all 0.2s; cursor: pointer; }
         .explain-btn.disabled { opacity: 0.2 !important; cursor: default !important; pointer-events: none; }
+        .bubble .explain-btn { position: absolute; right: -40px; top: 5px; }
         .bubble.user .explain-btn { background: rgba(99, 102, 241, 0.1); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); left: -40px; right: auto; }
         .explain-btn:not(.disabled):hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(251, 191, 36, 0.2); }
         .explain-btn.loading { animation: rotate 1s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
         .show-trans-btn { color: #818cf8; font-size: 0.8125rem; font-weight: 500; margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; }
-        .translation-text { color: #71717a; font-size: 0.875rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #2a2a3e; }
         
         .dot-pulse { display: flex; gap: 4px; padding: 4px 0; }
         .dot-pulse span { width: 8px; height: 8px; background: #6366f1; border-radius: 50%; animation: dotPulse 1.4s ease-in-out infinite; }
@@ -99,9 +99,7 @@
 
         .btn-primary { width: 100%; padding: 1.125rem; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border-radius: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
         .btn-primary:active { transform: scale(0.97); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* BLINKING START BUTTON */
         .btn-start { margin-top: auto; margin-bottom: 2rem; animation: start-glow 3s infinite ease-in-out; }
         @keyframes start-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); opacity: 0.9; } 50% { box-shadow: 0 0 25px 8px rgba(99, 102, 241, 0.6); opacity: 1; } }
 
@@ -111,7 +109,6 @@
         .correction-panel .corrected { color: #22c55e; font-weight: 600; }
         .correction-panel .explanation { color: #a1a1aa; margin-top: 0.25rem; font-size: 0.75rem; font-style: italic; }
         
-        /* RICH MODAL STYLES */
         .analysis-modal { background: #0a0a0f; width: 100%; max-width: 600px; max-height: 85vh; border-radius: 2rem; border: 1px solid #1f1f2e; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; }
         .analysis-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #1f1f2e; background: #111118; }
         .analysis-modal-content { flex: 1; overflow-y: auto; padding: 1.5rem; line-height: 1.7; }
@@ -126,7 +123,6 @@
         .feature-card { background: #111118; border: 1px solid #1f1f2e; border-radius: 1rem; padding: 1rem; transition: all 0.2s; text-align: left; width: 100%; border: 1px solid #1f1f2e; }
         .feature-card.active { border-color: #6366f1; background: rgba(99, 102, 241, 0.05); box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
 
-        /* TASK 1: BUTTON PULSE GLOW */
         @keyframes glow-pulse {
             0%, 100% { border-color: #1f1f2e; box-shadow: none; }
             50% { border-color: #6366f1; box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
@@ -136,7 +132,6 @@
         .animate-preset-2 { animation: glow-pulse 4s infinite 2s; }
         .animate-preset-3 { animation: glow-pulse 4s infinite 3s; }
 
-        /* TASK 2: FALLING STARS (BACKGROUND EFFECT) */
         .stars-container { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; opacity: 0.5; }
         .falling-star { position: absolute; top: 0; color: #fbbf24; animation: star-fall linear infinite; filter: blur(0.3px); opacity: 0; }
         @keyframes star-fall {
@@ -266,6 +261,29 @@
             );
         }
 
+        function OnboardingModal({ isOpen, onClose }) {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay">
+                    <div className="modal-content text-center">
+                        <h2 className="text-xl font-bold mb-6 gradient-text font-display">Как пользоваться?</h2>
+                        <div className="space-y-6 text-sm text-left mb-8">
+                            <div className="flex items-start gap-4">
+                                <div className="explain-btn !static !m-0 !shrink-0 flex-none">?</div>
+                                <p className="leading-relaxed">Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики и перевода.</p>
+                            </div>
+                            <div className="flex items-start gap-4">
+                                <div className="credits-badge !static !m-0 !shrink-0 flex-none"><Icons.Gem /></div>
+                                <p className="leading-relaxed">Нажми на бриллиант, чтобы <b>пополнить баланс</b> или пригласить друга (+100 токенов).</p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="btn-primary">Понятно!</button>
+                        <button onClick={() => { localStorage.setItem('lingvo_hint_seen', 'true'); onClose(); }} className="text-xs text-muted mt-6 block w-full hover:text-white transition-all">Не показывать больше</button>
+                    </div>
+                </div>
+            );
+        }
+
         function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal }) {
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
@@ -343,8 +361,11 @@
             const [analysisModal, setAnalysisModal] = useState({ isOpen: false, content: '', loading: false });
             const [isShopOpen, setIsShopOpen] = useState(false);
             const [isLowBalanceOpen, setIsLowBalanceOpen] = useState(false);
+            const [isHintOpen, setIsHintOpen] = useState(false);
+
             const platform = tg?.platform || 'unknown';
             const isPC = ['tdesktop', 'web', 'macos'].includes(platform);
+
             const authenticate = async () => {
                 if (!tg?.initData) return;
                 try {
@@ -363,11 +384,13 @@
                 } catch(e) {}
             };
             useEffect(() => { if (!token) authenticate(); else fetchCredits(); }, [token]);
+
             const triggerAI = async (hist) => {
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
                 setLoading(true); setSuggestions([]);
                 const aiMsgId = Date.now() + 1;
                 setMessages(prev => [...prev, { role: 'assistant', content: '', id: aiMsgId }]);
+                
                 try {
                     const res = await fetch(`${API_BASE}/chat_stream?token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character, situation, history: hist }) });
                     const reader = res.body.getReader();
@@ -378,7 +401,10 @@
                         const { value, done } = await reader.read();
                         const chunk = value ? decoder.decode(value, { stream: true }) : "";
                         streamBuffer += chunk;
-                        if (streamBuffer.includes("||ERROR||Credits")) { setMessages(prev => prev.filter(m => m.id !== aiMsgId)); setLoading(false); setIsLowBalanceOpen(true); break; }
+                        if (streamBuffer.includes("||ERROR||Credits")) {
+                            setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+                            setLoading(false); setIsLowBalanceOpen(true); break;
+                        }
                         if (streamBuffer.includes("||META||")) {
                             const parts = streamBuffer.split("||META||");
                             fullContent += parts[0];
@@ -395,12 +421,28 @@
                                     return next;
                                 });
                                 setSuggestions(meta.suggestions || []);
-                            } catch(e) { setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m)); }
+                                
+                                // ONBOARDING TRIGGER: After first response metadata
+                                if (!localStorage.getItem('lingvo_hint_seen') && hist.length === 0) {
+                                    setTimeout(() => setIsHintOpen(true), 500);
+                                }
+
+                            } catch(e) { 
+                                setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
+                            }
                             setLoading(false); break; 
-                        } else if (done) { fullContent += streamBuffer; setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m)); break; }
+                        } else if (done) {
+                            fullContent += streamBuffer;
+                            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
+                            break;
+                        }
                     }
-                } catch(e) { setLoading(false); setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "Error", translation: "Check connection" } : m)); } finally { fetchCredits(); }
+                } catch(e) { 
+                    setLoading(false); 
+                    setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "Error", translation: "Check connection" } : m));
+                } finally { fetchCredits(); }
             };
+
             const onSend = (txt) => { if (!txt.trim() || loading) return; const next = [...messages, { role: 'user', content: txt, id: Date.now() }]; setMessages(next); setInput(''); triggerAI(next.map(m=>({role:m.role, content:m.content}))); };
             const onAnalyze = async (id, txt) => {
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
@@ -415,15 +457,18 @@
                 finally { setAnalysisLoading(null); fetchCredits(); }
             };
             const clearHistory = () => { setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup'); };
+
             if (isPC) return <MobileOnlyScreen />;
             if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
             if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
+            
             return (
                 <>
                     {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyze} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} />)}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} />
                     {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
+                    <OnboardingModal isOpen={isHintOpen} onClose={() => setIsHintOpen(false)} />
                 </>
             );
         }
