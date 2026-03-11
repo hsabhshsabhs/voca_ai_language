@@ -226,9 +226,9 @@ async def telegram_webhook(request: Request):
                 bot_username = bot_data.get("result", {}).get("username", "lingvo_ai_bot")
                 
                 aff_text = (
-                    "<b>💼 Партнерская программа lingvo.ai</b>\n\n"
+                    "<b>💼 Партнерская программа lingvo ai</b>\n\n"
                     "Стань нашим амбассадором и получай двойную выгоду:\n\n"
-                    "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n"
+                    "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n\n"
                     "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга в течение <b>6 месяцев</b>!\n\n"
                     f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
                 )
@@ -286,7 +286,7 @@ async def telegram_webhook(request: Request):
         welcome_text = (
             "<b>lingvo ai — твой интерактивный тренажер английского</b> 🚀\n\n"
             "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-            "✅ <b>Любые роли и ситуации.</b>\n"
+            "✅ <b>Выбирай любых собеседников и ситуации.</b>\n"
             "✅ <b>Автоматическая проверка ошибок.</b>\n"
             "✅ <b>Грамматический разбор по кнопке «?».</b>\n"
             "✅ <b>Умные варианты ответов</b>.\n\n"
@@ -314,6 +314,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
