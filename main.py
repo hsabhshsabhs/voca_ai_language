@@ -291,7 +291,7 @@ async def telegram_webhook(request: Request):
             "✅ <b>Грамматический разбор по кнопке «?».</b>\n"
             "✅ <b>Умные варианты ответов</b>.\n\n"
             "💰 <b>Зарабатывай вместе с нами!</b> Получай +100 токенов за друга и 20% от его покупок в течение полугода.\n\n"
-            "<b>Нажми синюю кнопку \"Open\" и начни обучение прямо сейчас!</b>"
+            "<b>Нажми кнопку \"Open\" и начни обучение прямо сейчас!</b>"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
@@ -314,6 +314,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
