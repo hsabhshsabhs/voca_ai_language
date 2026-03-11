@@ -176,7 +176,7 @@
         const inviteFriend = () => {
             const userId = tg?.initDataUnsafe?.user?.id;
             if (!userId) return;
-            const text = encodeURIComponent("Практикуй английский с AI в lingvo.ai! По моей ссылке получишь +50 токенов на старт 🎁");
+            const text = encodeURIComponent("Практикуй английский с AI в lingvo ai! По моей ссылке получишь +100 токенов на старт 🎁");
             const url = `https://t.me/share/url?url=https://t.me/${BOT_USERNAME}?start=ref_${userId}&text=${text}`;
             tg.openTelegramLink(url);
         };
@@ -291,7 +291,7 @@
                         <div className="pt-6 border-t border-border">
                             <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4 text-center">Бесплатные токены</h3>
                             <button onClick={inviteFriend} className="w-full p-4 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center gap-3 text-accent font-bold hover:bg-accent/20 transition-all active:scale-95">
-                                <Icons.UserPlus /> Пригласить друга (+50)
+                                <Icons.UserPlus /> Пригласить друга (+100)
                             </button>
                         </div>
                     </div>
@@ -379,7 +379,7 @@
                         <div className="space-y-3">
                             <button onClick={onShopOpen} className="btn-primary">Перейти в магазин</button>
                             <button onClick={inviteFriend} className="btn-secondary flex items-center justify-center gap-2">
-                                <Icons.UserPlus /> Пригласить друга (+50)
+                                <Icons.UserPlus /> Пригласить друга (+100)
                             </button>
                         </div>
                     </div>
@@ -560,4 +560,5 @@
     </script>
 </body>
 </html>
+
 
