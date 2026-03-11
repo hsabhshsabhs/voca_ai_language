@@ -228,8 +228,8 @@ async def telegram_webhook(request: Request):
                 bot_username = bot_data.get("result", {}).get("username", "lingvo_ai_bot")
                 
                 aff_text = (
-                    "<b>💼 Партнерская программа lingvo.ai</b>\n\n"
-                    "Стань нашим амбассадором и получай двойную выгоду:\n\n"
+                    "<b>💼 Партнерская программа lingvo ai</b>.\n\n"
+                    "Стань нашим партнером и получай двойную выгоду:\n\n"
                     "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n"
                     "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга в течение <b>6 месяцев</b>!\n\n"
                     f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
@@ -289,15 +289,15 @@ async def telegram_webhook(request: Request):
         db.close()
 
         welcome_text = (
-            "<b>lingvo.ai — твой интерактивный тренажер английского</b>\n\n"
+            "<b>lingvo ai — твой интерактивный тренажер английского</b>.\n\n"
             "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-            "1. Любые роли и ситуации\n"
-            "2. Автоматическая проверка ошибок\n"
-            "3. Грамматический разбор по кнопке <b>«?»</b>\n"
-            "4. Умные варианты ответов\n\n"
-            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>\n\n"
+            "1. Любые роли и ситуации.\n"
+            "2. Автоматическая проверка ошибок.\n"
+            "3. Грамматический разбор по кнопке <b>«?»</b>.\n"
+            "4. Умные варианты ответов.\n\n"
+            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>!\n\n"
             "💰 <b>Зарабатывай вместе с нами!</b> Получай +100 токенов за друга и 20% от его покупок.\n\n"
-            "<b>Нажми синюю кнопку \"Open\" и начни общение прямо сейчас!</b>"
+            "<b>Нажми кнопку \"Open\" и начни общение прямо сейчас!</b>"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
@@ -312,3 +312,4 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
