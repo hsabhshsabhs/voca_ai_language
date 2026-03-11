@@ -48,7 +48,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True, index=True)
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
-    credits = Column(Float, default=100.0) # Стартовый баланс 100
+    credits = Column(Float, default=100.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -209,7 +209,6 @@ async def telegram_webhook(request: Request):
     except:
         return {"ok": False}
     
-    # 1. PreCheckout
     if "pre_checkout_query" in update:
         pq = update["pre_checkout_query"]
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
@@ -217,7 +216,6 @@ async def telegram_webhook(request: Request):
             await session.post(url, json={"pre_checkout_query_id": pq["id"], "ok": True})
         return {"ok": True}
 
-    # 2. Callback Queries (Affiliate Button)
     if "callback_query" in update:
         cb = update["callback_query"]
         if cb.get("data") == "affiliate_info":
@@ -228,8 +226,8 @@ async def telegram_webhook(request: Request):
                 bot_username = bot_data.get("result", {}).get("username", "lingvo_ai_bot")
                 
                 aff_text = (
-                    "<b>💼 Партнерская программа lingvo ai</b>.\n\n"
-                    "Стань нашим партнером и получай двойную выгоду:\n\n"
+                    "<b>💼 Партнерская программа lingvo.ai</b>\n\n"
+                    "Стань нашим амбассадором и получай двойную выгоду:\n\n"
                     "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n"
                     "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга в течение <b>6 месяцев</b>!\n\n"
                     f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
@@ -246,8 +244,6 @@ async def telegram_webhook(request: Request):
         return {"ok": True}
 
     message = update.get("message", {})
-    
-    # 3. Successful Payment
     if "successful_payment" in message:
         sp = message["successful_payment"]
         payload = sp.get("invoice_payload", "")
@@ -263,7 +259,6 @@ async def telegram_webhook(request: Request):
             except: pass
         return {"ok": True}
 
-    # 4. Commands (/start)
     text = message.get("text", "")
     chat_id = message.get("chat", {}).get("id")
     if text.startswith("/start") and chat_id:
@@ -289,21 +284,28 @@ async def telegram_webhook(request: Request):
         db.close()
 
         welcome_text = (
-            "<b>lingvo ai — твой интерактивный тренажер английского</b>.\n\n"
+            "<b>lingvo ai — твой интерактивный тренажер английского</b> 🚀\n\n"
             "Практикуй язык в диалогах с AI, получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-            "1. Любые роли и ситуации.\n"
-            "2. Автоматическая проверка ошибок.\n"
-            "3. Грамматический разбор по кнопке <b>«?»</b>.\n"
-            "4. Умные варианты ответов.\n\n"
-            "Следи за новостями и акциями в нашем Telegram <a href=\"https://t.me/lingvoaichanel\">канале</a>!\n\n"
-            "💰 <b>Зарабатывай вместе с нами!</b> Получай +100 токенов за друга и 20% от его покупок.\n\n"
-            "<b>Нажми кнопку \"Open\" и начни общение прямо сейчас!</b>"
+            "1️⃣ <b>Любые роли и ситуации</b>\n"
+            "2️⃣ <b>Автоматическая проверка ошибок</b>\n"
+            "3️⃣ <b>Грамматический разбор по кнопке «?»</b>\n"
+            "4️⃣ <b>Умные варианты ответов</b>\n\n"
+            "💰 <b>Зарабатывай вместе с нами!</b> Получай +100 токенов за друга и 20% от его покупок в течение полугода.\n\n"
+            "<b>Нажми синюю кнопку \"Open\" и начни обучение прямо сейчас!</b>"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         async with aiohttp.ClientSession() as session:
             await session.post(url, json={
-                "chat_id": chat_id, "text": welcome_text, "parse_mode": "HTML", "disable_web_page_preview": False,
-                "reply_markup": {"inline_keyboard": [[{"text": "💼 Партнерская программа", "callback_data": "affiliate_info"}]]}
+                "chat_id": chat_id, 
+                "text": welcome_text, 
+                "parse_mode": "HTML", 
+                "disable_web_page_preview": False,
+                "reply_markup": {
+                    "inline_keyboard": [
+                        [{"text": "📢 Наш Telegram канал", "url": "https://t.me/lingvoaichanel"}],
+                        [{"text": "💼 Партнерская программа", "callback_data": "affiliate_info"}]
+                    ]
+                }
             })
         return {"ok": True}
 
@@ -312,4 +314,3 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
