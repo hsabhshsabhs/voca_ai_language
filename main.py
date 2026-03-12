@@ -5,7 +5,7 @@ import asyncio
 import logging
 import hmac
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from urllib.parse import parse_qsl
 
@@ -49,6 +49,7 @@ class User(Base):
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
     credits = Column(Float, default=100.0)
+    last_reward = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -59,6 +60,19 @@ def get_db():
     finally: db.close()
 
 # --- TELEGRAM UTILS ---
+async def check_channel_member(user_id: int):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
+    params = {"chat_id": "@lingvoaichanel", "user_id": user_id}
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url, params=params) as resp:
+                data = await resp.json()
+                if data.get("ok"):
+                    status = data["result"]["status"]
+                    return status in ["member", "administrator", "creator"]
+        except: pass
+    return False
+
 def verify_telegram_data(init_data: str) -> bool:
     if not BOT_TOKEN: return False
     try:
@@ -115,13 +129,43 @@ async def auth_telegram(req: dict, db: Session = Depends(get_db)):
     tg_id = user_data.get("id")
     user = db.query(User).filter(User.telegram_id == tg_id).first()
     if not user:
-        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=100.0)
+        # У нового пользователя last_reward ставим на время создания, чтобы бонус начал капать через 24ч
+        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=100.0, last_reward=datetime.utcnow())
         db.add(user); db.commit(); db.refresh(user)
     return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
 
 @app.get("/me")
-def me(user: User = Depends(get_current_user)):
-    return {"username": user.first_name or user.username or "User", "credits": user.credits}
+async def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    added_bonus = 0
+    now = datetime.utcnow()
+    
+    # Авто-начисление бонусов
+    if user.last_reward:
+        diff = now - user.last_reward
+        days = int(diff.total_seconds() // 86400) # Сколько полных 24-часовых периодов прошло
+        
+        if days > 0:
+            # Проверяем подписку
+            is_member = await check_channel_member(user.telegram_id)
+            if is_member:
+                if user.credits < 50:
+                    potential_reward = days * 15.0
+                    old_credits = user.credits
+                    user.credits = min(50.0, user.credits + potential_reward)
+                    added_bonus = user.credits - old_credits
+                # В любом случае обновляем дату, чтобы не считать эти дни снова
+                user.last_reward = now
+                db.commit()
+    else:
+        # Если вдруг поля нет, инициализируем его
+        user.last_reward = now
+        db.commit()
+
+    return {
+        "username": user.first_name or user.username or "User", 
+        "credits": user.credits,
+        "added_bonus": added_bonus
+    }
 
 @app.post("/explain")
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -265,7 +309,8 @@ async def telegram_webhook(request: Request):
         db = SessionLocal()
         user = db.query(User).filter(User.telegram_id == chat_id).first()
         if not user:
-            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=100.0)
+            # У нового пользователя бонус пойдет через 24 часа
+            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=100.0, last_reward=datetime.utcnow())
             db.add(user); db.commit()
             if "ref_" in text:
                 try:
@@ -314,10 +359,3 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
-
-
-
-
-
-
