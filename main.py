@@ -182,11 +182,11 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
         if not clean_hist: history.append({"role": "user", "content": "Start conversation in English."})
         else: history.extend([{"role": m["role"], "content": m["content"]} for m in clean_hist])
         
-        # Check promo requirement: 3rd message in chat and not subscribed
-        # ТЕСТ: Временно принудительно False, чтобы проверить появление плашки
+        # Check promo requirement: Trigger on the 3rd user message (history length will be 5)
+        # ТЕСТ: Временно принудительно False, чтобы вы точно увидели сообщение
         is_sub = False # await check_subscription(user.telegram_id)
         promo = None
-        if not is_sub and len(clean_hist) == 3:
+        if not is_sub and len(clean_hist) == 5:
             promo = "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!"
 
 
