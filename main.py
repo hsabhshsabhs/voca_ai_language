@@ -267,7 +267,7 @@ async def telegram_webhook(request: Request):
                     "<b>💼 Партнерская программа</b>\n\n"
                     "Стань нашим амбассадором и получай двойную выгоду:\n\n"
                     "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n\n"
-                    "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга в течение <b>6 месяцев</b>!\n\n"
+                    "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга!\n\n"
                     f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
                 )
                 url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -352,6 +352,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
