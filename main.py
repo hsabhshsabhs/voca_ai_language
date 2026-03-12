@@ -184,7 +184,7 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
         
         # Check promo requirement: Trigger on the 3rd user message (history length will be 6)
         # ТЕСТ: Временно принудительно False
-        is_sub = False # await check_subscription(user.telegram_id)
+        is_sub = await check_subscription(user.telegram_id)
         promo = None
         if not is_sub and len(clean_hist) == 6:
             promo = "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!"
@@ -354,6 +354,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
