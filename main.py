@@ -127,7 +127,7 @@ def me(user: User = Depends(get_current_user)):
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if user.credits < 1: raise HTTPException(status_code=402)
     user.credits -= 1; db.commit()
-    prompt = f"Ты репетитор английского. КРАТКО объясни грамматику и структуру: '{req.get('text', '')}'"
+    prompt = f"Ты репетитор английского. КРАТКО объясни грамматику и структуру для человека который изучает английский язык: '{req.get('text', '')}'"
     res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=500)
     return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
 
@@ -314,6 +314,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
