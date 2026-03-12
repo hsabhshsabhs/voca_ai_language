@@ -143,6 +143,29 @@
 
         .btn-secondary { width: 100%; padding: 1.125rem; background: rgba(255, 255, 255, 0.05); color: #f4f4f5; border: 1px solid #2a2a3e; border-radius: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-secondary:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.1); }
+
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-40px); opacity: 0; }
+        }
+        .reward-popup {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            color: #22c55e;
+            font-weight: 800;
+            font-size: 1.25rem;
+            pointer-events: none;
+            animation: float-up 1.5s forwards;
+            z-index: 100;
+        }
+        .credits-badge.pulse {
+            animation: badge-pulse 0.5s ease-in-out;
+        }
+        @keyframes badge-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        }
     </style>
 </head>
 <body>
@@ -176,7 +199,32 @@
             tg.openTelegramLink(url);
         };
 
-        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen }) {
+        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim }) {
+            const [displayCredits, setDisplayCredits] = useState(credits);
+            const [isPulsing, setIsPulsing] = useState(false);
+
+            useEffect(() => {
+                if (rewardAnim) {
+                    setDisplayCredits(credits - 15);
+                    setTimeout(() => {
+                        let start = credits - 15;
+                        const end = credits;
+                        setIsPulsing(true);
+                        const interval = setInterval(() => {
+                            if (start < end) {
+                                start++;
+                                setDisplayCredits(start);
+                            } else {
+                                clearInterval(interval);
+                                setTimeout(() => setIsPulsing(false), 500);
+                            }
+                        }, 50);
+                    }, 1000);
+                } else {
+                    setDisplayCredits(credits);
+                }
+            }, [credits, rewardAnim]);
+
             const presets = [
                 { char: "Бариста", sit: "Заказ кофе", label: "Бариста", labelSit: "Заказ кофе" },
                 { char: "Доктор", sit: "Прием у врача", label: "Врач", labelSit: "Прием у врача" },
@@ -186,7 +234,15 @@
             const isAnyPresetActive = presets.some(p => character === p.char && situation === p.sit);
             return (
                 <div className="app-layout p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
-                    <div className="flex justify-between items-center mb-8"><h1 className="text-2xl font-display font-bold gradient-text">lingvo.ai</h1><div onClick={onShopOpen} className="credits-badge"><Icons.Gem /><span>{credits}</span></div></div>
+                    <div className="flex justify-between items-center mb-8">
+                        <h1 className="text-2xl font-display font-bold gradient-text">lingvo.ai</h1>
+                        <div className="relative">
+                            <div onClick={onShopOpen} className={`credits-badge ${isPulsing ? 'pulse' : ''}`}>
+                                <Icons.Gem /><span>{displayCredits}</span>
+                            </div>
+                            {rewardAnim && isPulsing && <div className="reward-popup">+15</div>}
+                        </div>
+                    </div>
                     <div className="flex flex-col h-full">
                         <div className="bg-surface/50 p-4 rounded-xl border border-border mb-6">
                             <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
@@ -297,15 +353,26 @@
                             const isAiLoading = m.role === 'assistant' && (!m.translation || (isLast && loading));
                             return (
                                 <div key={m.id || i} className={`bubble ${m.role==='user'?'user':'ai'}`}>
-                                    {m.content && (
-                                        <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(m.id, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}>?</div>
-                                    )}
-                                    <div className="whitespace-pre-wrap font-medium">{isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}</div>
-                                    {m.role === 'user' && m.correction && (
-                                        <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">Репетитор советует:</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
-                                    )}
-                                    {m.role === 'assistant' && !isAiLoading && m.translation && (
-                                        <div className="mt-2 pt-2 border-t border-borderLight">{!visTrans[m.id] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[m.id]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}</div>
+                                    {m.role === 'promo' ? (
+                                        <div className="bg-surface border border-accent/30 rounded-2xl p-4 text-xs leading-relaxed text-foreground/90 shadow-lg">
+                                            <div className="flex items-center gap-2 mb-2 text-accent font-bold uppercase tracking-wider text-[10px]">
+                                                <Icons.Sparkles /> Спецпредложение
+                                            </div>
+                                            {m.content}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {m.content && (
+                                                <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(m.id, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}>?</div>
+                                            )}
+                                            <div className="whitespace-pre-wrap font-medium">{isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}</div>
+                                            {m.role === 'user' && m.correction && (
+                                                <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">Репетитор советует:</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
+                                            )}
+                                            {m.role === 'assistant' && !isAiLoading && m.translation && (
+                                                <div className="mt-2 pt-2 border-t border-borderLight">{!visTrans[m.id] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[m.id]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}</div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             );
@@ -366,6 +433,8 @@
             const platform = tg?.platform || 'unknown';
             const isPC = ['tdesktop', 'web', 'macos'].includes(platform);
 
+            const [rewardAnim, setRewardAnim] = useState(false);
+
             const authenticate = async () => {
                 if (!tg?.initData) return;
                 try {
@@ -380,7 +449,13 @@
                     const r = await fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } });
                     if (r.status === 401) { localStorage.removeItem('lingvo_token'); setToken(null); authenticate(); return; }
                     const d = await r.json(); 
-                    if (d.credits !== undefined) setCredits(d.credits);
+                    if (d.credits !== undefined) {
+                        if (d.reward_given) {
+                            setRewardAnim(true);
+                            setTimeout(() => setRewardAnim(false), 4000);
+                        }
+                        setCredits(d.credits);
+                    }
                 } catch(e) {}
             };
             useEffect(() => { if (!token) authenticate(); else fetchCredits(); }, [token]);
@@ -413,7 +488,15 @@
                                 setMessages(prev => {
                                     const next = [...prev];
                                     const aiIdx = next.findIndex(m => m.id === aiMsgId);
-                                    if (aiIdx !== -1) { next[aiIdx].translation = meta.translation; next[aiIdx].content = fullContent; }
+                                    if (aiIdx !== -1) { 
+                                        next[aiIdx].translation = meta.translation; 
+                                        next[aiIdx].content = fullContent; 
+                                        
+                                        // PROMO INJECTION
+                                        if (meta.promo) {
+                                            next.splice(aiIdx, 0, { role: 'promo', content: meta.promo, id: Date.now() + 2 });
+                                        }
+                                    }
                                     if (meta.user_correction) {
                                         const lastUserIdx = next.findLastIndex(m => m.role === 'user');
                                         if (lastUserIdx !== -1) next[lastUserIdx].correction = meta.user_correction;
@@ -464,7 +547,7 @@
             
             return (
                 <>
-                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyze} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} />)}
+                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyze} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} />)}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} />
                     {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
@@ -477,5 +560,3 @@
     </script>
 </body>
 </html>
-
-
