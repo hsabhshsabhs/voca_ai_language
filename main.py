@@ -62,7 +62,7 @@ def get_db():
 # --- TELEGRAM UTILS ---
 async def check_subscription(user_id: int) -> bool:
     if not BOT_TOKEN: return True
-    channel_id = "@nasa"
+    channel_id = "@lingvoaichanel"
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
     async with aiohttp.ClientSession() as session:
         try:
@@ -352,6 +352,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
