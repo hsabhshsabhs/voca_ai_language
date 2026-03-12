@@ -264,7 +264,7 @@ async def telegram_webhook(request: Request):
                 bot_username = bot_data.get("result", {}).get("username", "lingvo_ai_bot")
                 
                 aff_text = (
-                    "<b>💼 Партнерская программа lingvo ai</b>\n\n"
+                    "<b>💼 Партнерская программа</b>\n\n"
                     "Стань нашим амбассадором и получай двойную выгоду:\n\n"
                     "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n\n"
                     "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга в течение <b>6 месяцев</b>!\n\n"
@@ -352,6 +352,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
