@@ -358,7 +358,13 @@
                                             <div className="flex items-center gap-2 mb-2 text-accent font-bold uppercase tracking-wider text-[10px]">
                                                 <Icons.Sparkles /> Спецпредложение
                                             </div>
-                                            {m.content}
+                                            <div className="mb-3">{m.content}</div>
+                                            <button 
+                                                onClick={() => tg?.openTelegramLink('https://t.me/lingvoaichanel')} 
+                                                className="w-full py-2.5 bg-accent hover:bg-accentLight text-white rounded-xl font-bold text-[11px] active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"
+                                            >
+                                                Подписаться
+                                            </button>
                                         </div>
                                     ) : (
                                         <>
