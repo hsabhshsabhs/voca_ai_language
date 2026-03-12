@@ -50,6 +50,7 @@ class User(Base):
     first_name = Column(String, nullable=True)
     credits = Column(Float, default=100.0)
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_reward_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
 
@@ -59,6 +60,20 @@ def get_db():
     finally: db.close()
 
 # --- TELEGRAM UTILS ---
+async def check_subscription(user_id: int) -> bool:
+    if not BOT_TOKEN: return True
+    channel_id = "@lingvoaichanel"
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url, params={"chat_id": channel_id, "user_id": user_id}) as resp:
+                if resp.status != 200: return False
+                data = await resp.json()
+                if not data.get("ok"): return False
+                status = data["result"].get("status")
+                return status in ["member", "administrator", "creator"]
+        except: return False
+
 def verify_telegram_data(init_data: str) -> bool:
     if not BOT_TOKEN: return False
     try:
@@ -120,14 +135,31 @@ async def auth_telegram(req: dict, db: Session = Depends(get_db)):
     return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
 
 @app.get("/me")
-def me(user: User = Depends(get_current_user)):
-    return {"username": user.first_name or user.username or "User", "credits": user.credits}
+async def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Daily reward logic
+    now = datetime.utcnow()
+    today = now.date()
+    last_reward_date = user.last_reward_at.date() if user.last_reward_at else None
+    
+    reward_given = False
+    if user.credits < 50 and last_reward_date != today:
+        user.credits += 15.0
+        user.last_reward_at = now
+        db.commit()
+        db.refresh(user)
+        reward_given = True
+        
+    return {
+        "username": user.first_name or user.username or "User", 
+        "credits": user.credits,
+        "reward_given": reward_given
+    }
 
 @app.post("/explain")
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if user.credits < 1: raise HTTPException(status_code=402)
     user.credits -= 1; db.commit()
-    prompt = f"Ты репетитор английского. КРАТКО объясни грамматику и структуру для человека который изучает английский язык: '{req.get('text', '')}'"
+    prompt = f"Ты репетитор английского. КРАТКО объясни грамматику и структуру: '{req.get('text', '')}'"
     res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=500)
     return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
 
@@ -150,6 +182,12 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
         if not clean_hist: history.append({"role": "user", "content": "Start conversation in English."})
         else: history.extend([{"role": m["role"], "content": m["content"]} for m in clean_hist])
         
+        # Check promo requirement: 3rd message in chat and not subscribed
+        is_sub = await check_subscription(user.telegram_id)
+        promo = None
+        if not is_sub and len(clean_hist) == 2:
+            promo = "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал https://t.me/lingvoaichanel. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!"
+
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(DEEPSEEK_URL, headers=headers, json={"model": MODEL, "messages": history, "stream": True}) as resp:
@@ -183,7 +221,7 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
                 if m: corr_data = json.loads(m.group(0))
             except: pass
             
-        yield "||META||" + json.dumps({"translation": str(trans).strip(), "suggestions": sug, "user_correction": corr_data}, ensure_ascii=False)
+        yield "||META||" + json.dumps({"translation": str(trans).strip(), "suggestions": sug, "user_correction": corr_data, "promo": promo}, ensure_ascii=False)
 
     return StreamingResponse(gen(), media_type="text/plain")
 
@@ -314,7 +352,6 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
 
 
 
