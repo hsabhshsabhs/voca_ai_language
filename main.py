@@ -62,7 +62,7 @@ def get_db():
 # --- TELEGRAM UTILS ---
 async def check_subscription(user_id: int) -> bool:
     if not BOT_TOKEN: return True
-    channel_id = "@nasa"
+    channel_id = "@lingvoaichanel"
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
     async with aiohttp.ClientSession() as session:
         try:
@@ -157,8 +157,8 @@ async def me(user: User = Depends(get_current_user), db: Session = Depends(get_d
 
 @app.post("/explain")
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.credits < 1: raise HTTPException(status_code=402)
-    user.credits -= 1; db.commit()
+    # if user.credits < 1: raise HTTPException(status_code=402)
+    # user.credits -= 1; db.commit()
     prompt = f"Ты репетитор английского. КРАТКО объясни грамматику и структуру: '{req.get('text', '')}'"
     res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=500)
     return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
@@ -185,8 +185,8 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
         # Check promo requirement: 3rd message in chat and not subscribed
         is_sub = await check_subscription(user.telegram_id)
         promo = None
-        if not is_sub and len(clean_hist) == 2:
-            promo = "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал https://t.me/lingvoaichanel. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!"
+        if not is_sub and len(clean_hist) == 3:
+            promo = "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!"
 
         async with aiohttp.ClientSession() as session:
             try:
@@ -352,6 +352,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
