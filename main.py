@@ -177,7 +177,7 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
     async def gen():
         full_en = ""
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-        history = [{"role": "system", "content": f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. BE VERY CONCISE. MAX 2-3 SHORT SENTENCES. Do not write long descriptions."}]
+        history = [{"role": "system", "content": f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. ALWAYS respond in English ONLY. BE VERY CONCISE. MAX 2-3 SHORT SENTENCES. Do not write long descriptions."}]
         clean_hist = [m for m in req.get('history', []) if m.get("content")]
         if not clean_hist: history.append({"role": "user", "content": "Start conversation in English."})
         else: history.extend([{"role": m["role"], "content": m["content"]} for m in clean_hist])
@@ -354,6 +354,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
