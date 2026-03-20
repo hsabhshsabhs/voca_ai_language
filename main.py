@@ -337,7 +337,7 @@ async def telegram_webhook(request: Request):
         async with aiohttp.ClientSession() as session:
             await session.post(url, json={
                 "chat_id": chat_id, 
-                "animation": "https://raw.githubusercontent.com/hsabhshsabhs/voca_ai_language/main/Other/lingvoai_preview.gif",
+                "animation": "AAMCAgADGQEAARxJXGm89Ej4nXiIFrR3f0G7YtTqxRRuAAKPmQAC8hzhSebg1f0XQpKIAQAHbQADOgQ",
                 "caption": welcome_text, 
                 "parse_mode": "HTML", 
                 "disable_web_page_preview": False,
