@@ -333,10 +333,11 @@ async def telegram_webhook(request: Request):
             "💰 <b>Зарабатывай вместе с нами!</b> Получай +100 токенов за друга и 20% от его покупок.\n\n"
             "<b>Нажми кнопку \"Open\" и начни обучение прямо сейчас!</b>"
         )
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendAnimation"
         async with aiohttp.ClientSession() as session:
             await session.post(url, json={
                 "chat_id": chat_id, 
+                "animation": "https://raw.githubusercontent.com/hsabhshsabhs/voca_ai_language/main/https://lingvoai_preview.gif",
                 "text": welcome_text, 
                 "parse_mode": "HTML", 
                 "disable_web_page_preview": False,
