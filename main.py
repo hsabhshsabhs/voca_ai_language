@@ -338,7 +338,7 @@ async def telegram_webhook(request: Request):
             await session.post(url, json={
                 "chat_id": chat_id, 
                 "animation": "https://raw.githubusercontent.com/hsabhshsabhs/voca_ai_language/main/lingvoai_preview.gif",
-                "text": welcome_text, 
+                "caption": welcome_text, 
                 "parse_mode": "HTML", 
                 "disable_web_page_preview": False,
                 "reply_markup": {
