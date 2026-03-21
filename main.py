@@ -175,16 +175,11 @@ async def explain(req: dict, user: User = Depends(get_current_user), db: Session
         f"1. Перевод на русский.\n"
         f"2. Слова + IPA транскрипция [ ] + краткое пояснение.\n"
         f"3. Суть грамматики (тезисно, самое важное).\n"
-        "Пиши емко, избегай вступительных слов. Используй Markdown. "
-        "ВАЖНО: Никогда не используй длинные нижние подчеркивания (____) или разделители из подчеркиваний."
+        "Пиши емко, избегай вступительных слов. Используй Markdown."
     )
     res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=1000)
-    
-    # Очистка от длинных нижних подчеркиваний, если ИИ их прислал
-    if res:
-        res = re.sub(r'_{3,}', '', res)
-        
-    return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
+    clean_res = re.sub(r"_+", " ", str(res)) if res else "Не удалось получить ответ"
+    return {"explanation": clean_res, "credits": user.credits}
 
 @app.post("/chat_stream")
 async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
@@ -250,8 +245,9 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
             {"role":"user", "content": s_user_prompt}
         ]))
         
+        user_msg = clean_hist[-1]['content'] if clean_hist and clean_hist[-1]['role'] == 'user' else ""
         c_task = asyncio.create_task(deepseek_call([
-            {"role":"system", "content":f"Grammar check for {target_lang}. Return JSON {{\"corrected\":\"...\", \"explanation\":\"...\"}} in Russian or word NONE. Do not use underscores like ____."}, 
+            {"role":"system", "content":f"Grammar check for {target_lang}. Return JSON {{\"corrected\":\"...\", \"explanation\":\"...\"}} in Russian or word NONE."}, 
             {"role":"user", "content": f"Text: {user_msg}"}
         ])) if user_msg else None
 
