@@ -48,7 +48,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True, index=True)
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
-    credits = Column(Float, default=100.0)
+    credits = Column(Float, default=50.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_reward_at = Column(DateTime, default=datetime.utcnow)
 
@@ -130,7 +130,7 @@ async def auth_telegram(req: dict, db: Session = Depends(get_db)):
     tg_id = user_data.get("id")
     user = db.query(User).filter(User.telegram_id == tg_id).first()
     if not user:
-        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=100.0)
+        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=50.0)
         db.add(user); db.commit(); db.refresh(user)
     return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
 
@@ -351,7 +351,7 @@ async def telegram_webhook(request: Request):
         db = SessionLocal()
         user = db.query(User).filter(User.telegram_id == chat_id).first()
         if not user:
-            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=100.0)
+            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=50.0)
             db.add(user); db.commit()
             if "ref_" in text:
                 try:
