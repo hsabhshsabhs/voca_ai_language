@@ -309,11 +309,11 @@
                                 <div>
                                     <p className="text-center text-xs font-bold mb-4 text-white">Выбери стиль объяснения:</p>
                                     <div className="grid gap-2">
-                                        <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
-                                            <div className="font-bold text-accent text-sm mb-0.5">Лучший друг</div>
+                                        <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl transition-all text-left active:scale-95 group">
+                                            <div className="font-bold text-white text-sm mb-0.5">Лучший друг</div>
                                             <div className="text-[10px] text-muted leading-tight">Просто и доходчиво.</div>
                                         </button>
-                                        <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
+                                        <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl transition-all text-left active:scale-95 group">
                                             <div className="font-bold text-white text-sm mb-0.5">Репетитор</div>
                                             <div className="text-[10px] text-muted leading-tight">Академический разбор.</div>
                                         </button>
@@ -421,7 +421,11 @@
         function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
-            useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+            useEffect(() => {
+                const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                if (lastUserMsg && lastUserMsg.correction) return;
+                scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages, loading]);
             return (
                 <div className="app-layout">
                     <header className="app-header"><button onClick={onBack} className="p-2 hover:bg-surfaceHover rounded-lg"><Icons.Back /></button><h2 className="font-display font-bold text-lg gradient-text">lingvo.ai</h2><div onClick={onShopOpen} className="credits-badge"><Icons.Gem /><span>{credits}</span></div></header>
