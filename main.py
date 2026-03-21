@@ -48,7 +48,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True, index=True)
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
-    credits = Column(Float, default=50.0)
+    credits = Column(Float, default=30.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_reward_at = Column(DateTime, default=datetime.utcnow)
 
@@ -130,7 +130,7 @@ async def auth_telegram(req: dict, db: Session = Depends(get_db)):
     tg_id = user_data.get("id")
     user = db.query(User).filter(User.telegram_id == tg_id).first()
     if not user:
-        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=50.0)
+        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=30.0)
         db.add(user); db.commit(); db.refresh(user)
     return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
 
@@ -314,7 +314,7 @@ async def telegram_webhook(request: Request):
                 aff_text = (
                     "<b>💼 Партнерская программа</b>\n\n"
                     "Стань нашим амбассадором и получай двойную выгоду:\n\n"
-                    "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n\n"
+                    "🎁 <b>+30 токенов</b> сразу за каждого приглашенного друга.\n\n"
                     "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга!\n\n"
                     f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
                 )
@@ -351,7 +351,7 @@ async def telegram_webhook(request: Request):
         db = SessionLocal()
         user = db.query(User).filter(User.telegram_id == chat_id).first()
         if not user:
-            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=50.0)
+            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=30.0)
             db.add(user); db.commit()
             if "ref_" in text:
                 try:
@@ -359,11 +359,11 @@ async def telegram_webhook(request: Request):
                     if ref_id != chat_id:
                         referrer = db.query(User).filter(User.telegram_id == ref_id).first()
                         if referrer:
-                            referrer.credits += 100.0; db.commit()
+                            referrer.credits += 30.0; db.commit()
                             async with aiohttp.ClientSession() as session:
                                 await session.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
                                     "chat_id": ref_id,
-                                    "text": "<b>Ура!</b> 🎉 По твоей ссылке новый пользователь! Тебе начислено <b>100 токенов</b> 🎁 и <b>20%</b> от его будущих покупок.",
+                                    "text": "<b>Ура!</b> 🎉 По твоей ссылке новый пользователь! Тебе начислено <b>30 токенов</b> 🎁 и <b>20%</b> от его будущих покупок.",
                                     "parse_mode": "HTML"
                                 })
                 except: pass
