@@ -178,8 +178,7 @@ async def explain(req: dict, user: User = Depends(get_current_user), db: Session
         "Пиши емко, избегай вступительных слов. Используй Markdown."
     )
     res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=1000)
-    clean_res = re.sub(r"_+", " ", str(res)) if res else "Не удалось получить ответ"
-    return {"explanation": clean_res, "credits": user.credits}
+    return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
 
 @app.post("/chat_stream")
 async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
