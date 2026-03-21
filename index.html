@@ -199,7 +199,7 @@
             tg.openTelegramLink(url);
         };
 
-        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim }) {
+        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim, selectedLang, setSelectedLang }) {
             const [displayCredits, setDisplayCredits] = useState(credits);
             const [isPulsing, setIsPulsing] = useState(false);
 
@@ -225,6 +225,14 @@
                 }
             }, [credits, rewardAnim]);
 
+            const languages = [
+                { id: 'English', label: 'English', flag: '🇬🇧' },
+                { id: 'German', label: 'Deutsch', flag: '🇩🇪' },
+                { id: 'French', label: 'Français', flag: '🇫🇷' },
+                { id: 'Spanish', label: 'Español', flag: '🇪🇸' },
+                { id: 'Italian', label: 'Italiano', flag: '🇮🇹' },
+            ];
+
             const presets = [
                 { char: "Бариста", sit: "Заказ кофе", label: "Бариста", labelSit: "Заказ кофе" },
                 { char: "Доктор", sit: "Прием у врача", label: "Врач", labelSit: "Прием у врача" },
@@ -243,7 +251,23 @@
                             {rewardAnim && isPulsing && <div className="reward-popup">+15</div>}
                         </div>
                     </div>
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col h-full overflow-y-auto pb-20">
+                        <div className="mb-6">
+                            <label className="text-xs uppercase text-muted mb-3 block font-bold tracking-widest">Язык обучения</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {languages.map(l => (
+                                    <button 
+                                        key={l.id} 
+                                        onClick={() => setSelectedLang(l.id)}
+                                        className={`p-2 rounded-xl border text-sm transition-all flex flex-col items-center gap-1 ${selectedLang === l.id ? 'border-accent bg-accent/10 text-white' : 'border-border bg-surface/50 text-muted'}`}
+                                    >
+                                        <span className="text-xl">{l.flag}</span>
+                                        <span className="font-semibold">{l.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="bg-surface/50 p-4 rounded-xl border border-border mb-6">
                             <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
                             <div className="grid grid-cols-2 gap-3 mt-4">
@@ -259,7 +283,7 @@
                             <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
                             <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
                         </div>
-                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg">Начать диалог</button>
+                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg mt-8">Начать диалог</button>
                     </div>
                 </div>
             );
@@ -271,7 +295,7 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="analysis-modal" onClick={e=>e.stopPropagation()}>
                         <div className="analysis-modal-header"><h2 className="font-bold gradient-text">{loading ? "Анализирую текст..." : "Разбор от lingvo.ai"}</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full"><Icons.X /></button></div>
-                        <div className="analysis-modal-content">{loading ? (<div className="py-8 text-center"><div className="waiting-animation"><div></div><div></div><div></div></div><p className="text-muted text-sm italic font-medium px-4">Делаю разбор, в среднем это занимает менее 1 минуты.</p></div>) : (<div dangerouslySetInnerHTML={{__html: marked.parse(content)}} />)}</div>
+                        <div className="analysis-modal-content">{loading ? (<div className="py-8 text-center"><div className="waiting-animation"><div></div><div></div><div></div></div><p className="text-muted text-sm italic font-medium px-4">Делаю разбор, в среднем это занимает менее 1 минуты.</p></div>) : (<div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{__html: marked.parse(content)}} />)}</div>
                     </div>
                 </div>
             );
@@ -326,7 +350,7 @@
                         <div className="space-y-6 text-sm text-left mb-8">
                             <div className="flex items-start gap-4">
                                 <div className="explain-btn !static !m-0 !shrink-0 flex-none">?</div>
-                                <p className="leading-relaxed">Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики и перевода.</p>
+                                <p className="leading-relaxed">Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики, перевода и транскрипции.</p>
                             </div>
                             <div className="flex items-start gap-4">
                                 <div className="credits-badge !static !m-0 !shrink-0 flex-none"><Icons.Gem /></div>
@@ -340,7 +364,7 @@
             );
         }
 
-        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal }) {
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
             useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
@@ -387,7 +411,7 @@
                     </main>
                     <footer className="bottom-panel">
                         {suggestions.length > 0 && !loading && (<div className="suggestions-ribbon">{suggestions.map((s, i) => (<button key={i} onClick={()=>onSend(s.en)} className="suggestion-pill"><span className="en">{s.en}</span><span className="ru">{s.ru}</span></button>))}</div>)}
-                        <div className="input-bar"><input className="input-field flex-1" placeholder="Type in English..." value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={()=>onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white hover:scale-105 active:scale-95 transition-all"><Icons.Send /></button></div>
+                        <div className="input-bar"><input className="input-field flex-1" placeholder={`Type in ${lang}...`} value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={()=>onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white hover:scale-105 active:scale-95 transition-all"><Icons.Send /></button></div>
                     </footer>
                 </div>
             );
@@ -426,6 +450,7 @@
             const [step, setStep] = useState('setup');
             const [character, setCharacter] = useState('');
             const [situation, setSituation] = useState('');
+            const [selectedLang, setSelectedLang] = useState('English');
             const [messages, setMessages] = useState([]);
             const [input, setInput] = useState('');
             const [suggestions, setSuggestions] = useState([]);
@@ -473,7 +498,7 @@
                 setMessages(prev => [...prev, { role: 'assistant', content: '', id: aiMsgId }]);
                 
                 try {
-                    const res = await fetch(`${API_BASE}/chat_stream?token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character, situation, history: hist }) });
+                    const res = await fetch(`${API_BASE}/chat_stream?token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character, situation, lang: selectedLang, history: hist }) });
                     const reader = res.body.getReader();
                     const decoder = new TextDecoder();
                     let fullContent = "";
@@ -537,7 +562,7 @@
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
                 setAnalysisLoading(id); setAnalysisModal({ isOpen: true, content: '', loading: true });
                 try {
-                    const res = await fetch(`${API_BASE}/explain`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ text: txt }) });
+                    const res = await fetch(`${API_BASE}/explain`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ text: txt, lang: selectedLang }) });
                     if (res.status === 402) { setAnalysisModal(prev => ({ ...prev, isOpen: false })); setIsLowBalanceOpen(true); return; }
                     const data = await res.json();
                     setMessages(prev => prev.map(m => m.id === id ? { ...m, analysis: data.explanation } : m));
@@ -553,7 +578,7 @@
             
             return (
                 <>
-                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyze} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} />)}
+                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyze} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} />)}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} />
                     {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
@@ -566,4 +591,3 @@
     </script>
 </body>
 </html>
-
