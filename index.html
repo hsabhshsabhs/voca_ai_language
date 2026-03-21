@@ -113,6 +113,7 @@
         .analysis-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #1f1f2e; background: #111118; }
         .analysis-modal-content { flex: 1; overflow-y: auto; padding: 1.5rem; line-height: 1.7; }
         .analysis-modal-content h3 { color: #818cf8; font-weight: 700; border-bottom: 2px solid rgba(99, 102, 241, 0.2); padding-bottom: 4px; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .analysis-modal-content hr { display: none; }
         .analysis-modal-content strong { color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 0 4px; border-radius: 4px; }
         
         .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -309,11 +310,11 @@
                                 <div>
                                     <p className="text-center text-xs font-bold mb-4 text-white">Выбери стиль объяснения:</p>
                                     <div className="grid gap-2">
-                                        <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
-                                            <div className="font-bold text-accent text-sm mb-0.5">Лучший друг</div>
+                                        <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl transition-all text-left active:scale-95 group">
+                                            <div className="font-bold text-white text-sm mb-0.5">Лучший друг</div>
                                             <div className="text-[10px] text-muted leading-tight">Просто и доходчиво.</div>
                                         </button>
-                                        <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
+                                        <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl transition-all text-left active:scale-95 group">
                                             <div className="font-bold text-white text-sm mb-0.5">Репетитор</div>
                                             <div className="text-[10px] text-muted leading-tight">Академический разбор.</div>
                                         </button>
@@ -421,7 +422,11 @@
         function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
-            useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+            useEffect(() => {
+                const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                if (lastUserMsg && lastUserMsg.correction) return;
+                scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages, loading]);
             return (
                 <div className="app-layout">
                     <header className="app-header"><button onClick={onBack} className="p-2 hover:bg-surfaceHover rounded-lg"><Icons.Back /></button><h2 className="font-display font-bold text-lg gradient-text">lingvo.ai</h2><div onClick={onShopOpen} className="credits-badge"><Icons.Gem /><span>{credits}</span></div></header>
@@ -586,8 +591,7 @@
                                         if (lastUserIdx !== -1) next[lastUserIdx].correction = corrData;
                                         return next;
                                     });
-                                } catch(e) { console.error("Corr parse error", e); }
-                                // Strip from buffer so it doesn't show in AI bubble
+                                } catch(e) {}
                                 streamBuffer = streamBuffer.substring(0, startIdx) + streamBuffer.substring(endIdx + 2);
                             }
                         }
@@ -596,55 +600,32 @@
                             setMessages(prev => prev.filter(m => m.id !== aiMsgId));
                             setLoading(false); setIsLowBalanceOpen(true); break;
                         }
+
                         if (streamBuffer.includes("||META||")) {
                             const parts = streamBuffer.split("||META||");
-                            fullContent += parts[0];
+                            const mainText = parts[0];
+                            fullContent = mainText; // Update fullContent
+                            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: mainText } : m));
                             try {
                                 const meta = JSON.parse(parts[1]);
-                                setMessages(prev => {
-                                    const next = [...prev];
-                                    const aiIdx = next.findIndex(m => m.id === aiMsgId);
-                                    if (aiIdx !== -1) { 
-                                        next[aiIdx].translation = meta.translation; 
-                                        next[aiIdx].content = fullContent; 
-                                        
-                                        // PROMO INJECTION
-                                        if (meta.promo) {
-                                            next.splice(aiIdx, 0, { role: 'promo', content: meta.promo, id: Date.now() + 2 });
-                                        }
-                                    }
-                                    // user_correction is now handled early, but we keep the logic for safety
-                                    if (meta.user_correction) {
-                                        const lastUserIdx = next.findLastIndex(m => m.role === 'user');
-                                        if (lastUserIdx !== -1) next[lastUserIdx].correction = meta.user_correction;
-                                    }
-                                    return next;
-                                });
+                                setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, translation: meta.translation } : m));
                                 setSuggestions(meta.suggestions || []);
-                                
-                                // ONBOARDING TRIGGER: After first response metadata
-                                if (!localStorage.getItem('lingvo_hint_seen') && hist.length === 0) {
-                                    setTimeout(() => setIsHintOpen(true), 500);
-                                }
-
-                            } catch(e) { 
-                                setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
-                            }
+                            } catch(e) {}
                             setLoading(false); break; 
                         } else if (done) {
                             fullContent += streamBuffer;
-                            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
+                            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent } : m));
                             break;
                         }
                         
-                        // Update AI bubble with current buffer (excluding any markers handled above)
+                        // Stream update
                         if (!streamBuffer.includes("||")) {
                             setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: streamBuffer } : m));
                         }
                     }
                 } catch(e) { 
                     setLoading(false); 
-                    setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "Error", translation: "Check connection" } : m));
+                    setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "Error" } : m));
                 } finally { fetchCredits(); }
             };
 
@@ -660,7 +641,6 @@
                 setAnalysisLoading(pendingId); setAnalysisModal(prev => ({ ...prev, loading: true }));
                 try {
                     const res = await fetch(`${API_BASE}/explain`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ text: pendingTxt, lang: selectedLang, mode }) });
-                    if (res.status === 402) { setAnalysisModal(prev => ({ ...prev, isOpen: false })); setIsLowBalanceOpen(true); return; }
                     const data = await res.json();
                     setMessages(prev => prev.map(m => m.id === pendingId ? { ...m, analysis: data.explanation } : m));
                     setAnalysisModal(prev => ({ ...prev, content: data.explanation, loading: false }));
@@ -672,7 +652,6 @@
 
             if (isPC) return <MobileOnlyScreen />;
             if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
-            if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
             
             return (
                 <>
