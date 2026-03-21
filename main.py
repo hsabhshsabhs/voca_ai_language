@@ -159,8 +159,15 @@ async def me(user: User = Depends(get_current_user), db: Session = Depends(get_d
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # if user.credits < 1: raise HTTPException(status_code=402)
     # user.credits -= 1; db.commit()
-    prompt = f"Ты репетитор английского. КРАТКО объясни грамматику и структуру: '{req.get('text', '')}'"
-    res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=500)
+    lang = req.get('lang', 'English')
+    text = req.get('text', '')
+    prompt = (
+        f"Ты профессиональный репетитор по языку: {lang}. "
+        f"КРАТКО объясни грамматику и структуру фразы: '{text}'. "
+        f"ОБЯЗАТЕЛЬНО для каждого значимого слова во фразе добавь фонетическую транскрипцию IPA в квадратных скобках [ ]. "
+        "Ответ дай на русском языке, используя Markdown для форматирования."
+    )
+    res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=700)
     return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
 
 @app.post("/chat_stream")
@@ -173,22 +180,28 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
     except: return StreamingResponse(iter(["||ERROR||Auth"]), media_type="text/plain")
 
     user.credits -= 1; db.commit()
+    target_lang = req.get('lang', 'English')
 
     async def gen():
-        full_en = ""
+        full_res = ""
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-        history = [{"role": "system", "content": f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. ALWAYS respond in English ONLY. BE VERY CONCISE. MAX 2-3 SHORT SENTENCES. Do not write long descriptions."}]
+        system_content = (
+            f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. "
+            f"ALWAYS respond in {target_lang} ONLY. BE VERY CONCISE. MAX 2-3 SHORT SENTENCES. "
+            "Do not write long descriptions."
+        )
+        history = [{"role": "system", "content": system_content}]
         clean_hist = [m for m in req.get('history', []) if m.get("content")]
-        if not clean_hist: history.append({"role": "user", "content": "Start conversation in English."})
-        else: history.extend([{"role": m["role"], "content": m["content"]} for m in clean_hist])
+        if not clean_hist: 
+            history.append({"role": "user", "content": f"Start conversation in {target_lang}."})
+        else: 
+            history.extend([{"role": m["role"], "content": m["content"]} for m in clean_hist])
         
-        # Check promo requirement: Trigger on the 3rd user message (history length will be 6)
-        # ТЕСТ: Временно принудительно False
+        # Check promo requirement
         is_sub = await check_subscription(user.telegram_id)
         promo = None
         if not is_sub and len(clean_hist) == 6:
             promo = "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!"
-
 
         async with aiohttp.ClientSession() as session:
             try:
@@ -198,32 +211,51 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
                         if lt.startswith("data: ") and lt != "data: [DONE]":
                             try:
                                 chunk = json.loads(lt[6:])['choices'][0]['delta'].get('content', '')
-                                full_en += chunk; yield chunk
+                                full_res += chunk; yield chunk
                             except: continue
             except: yield "||ERROR||Lost"
         
         await asyncio.sleep(0.1)
-        t_task = asyncio.create_task(deepseek_call([{"role":"system", "content":"You are a professional translator. Translate the text STICTLY to Russian language only. NEVER use any other languages in your response. Return ONLY the translated Russian text."}, {"role":"user", "content": f"Translate this English text to Russian: {full_en}"}]))
-        s_task = asyncio.create_task(deepseek_call([{"role":"system", "content":"Return ONLY a JSON array of 2 short English reply options with Russian translations. Format: [{\"en\":\"...\", \"ru\":\"...\"}]. NO chat, NO intro."}, {"role":"user", "content": f"Context: {full_en}"}]))
+        # Translation and Suggestions
+        t_prompt = f"Translate this {target_lang} text to Russian strictly: {full_res}"
+        t_task = asyncio.create_task(deepseek_call([
+            {"role":"system", "content":"You are a professional translator. Return ONLY the translated Russian text."}, 
+            {"role":"user", "content": t_prompt}
+        ]))
+        
+        s_prompt = f"Context: {full_res}. Language: {target_lang}."
+        s_task = asyncio.create_task(deepseek_call([
+            {"role":"system", "content":f"Return ONLY a JSON array of 2 short {target_lang} reply options with Russian translations. Format: [{{'target':'...', 'ru':'...'}}]. NO chat, NO intro."}, 
+            {"role":"user", "content": s_prompt}
+        ]))
+        
         user_msg = clean_hist[-1]['content'] if clean_hist and clean_hist[-1]['role'] == 'user' else ""
-        c_task = asyncio.create_task(deepseek_call([{"role":"system", "content":"Grammar check. Return JSON {'corrected':'...', 'explanation':'...'} in Russian or word NONE."}, {"role":"user", "content": f"Text: {user_msg}"}])) if user_msg else None
+        c_task = asyncio.create_task(deepseek_call([
+            {"role":"system", "content":f"Grammar check for {target_lang}. Return JSON {{'corrected':'...', 'explanation':'...'}} in Russian or word NONE."}, 
+            {"role":"user", "content": f"Text: {user_msg}"}
+        ])) if user_msg else None
 
         trans, sug_raw, corr_raw = await asyncio.gather(t_task, s_task, c_task if c_task else asyncio.sleep(0, "NONE"))
         
         sug = []
         try:
             m = re.search(r'\[\s*\{.*\}\s*\]', str(sug_raw), re.DOTALL)
-            if m: sug = json.loads(m.group(0))[:2]
+            if m: 
+                raw_sug = json.loads(m.group(0).replace("'", '"'))[:2]
+                # Normalize keys to en/ru for frontend compatibility or update frontend
+                sug = [{"en": s.get('target', s.get('en')), "ru": s.get('ru')} for s in raw_sug]
         except: pass
 
         corr_data = None
         if corr_raw and "NONE" not in str(corr_raw).upper():
             try:
                 m = re.search(r'\{.*\}', str(corr_raw), re.DOTALL)
-                if m: corr_data = json.loads(m.group(0))
+                if m: corr_data = json.loads(m.group(0).replace("'", '"'))
             except: pass
             
         yield "||META||" + json.dumps({"translation": str(trans).strip(), "suggestions": sug, "user_correction": corr_data, "promo": promo}, ensure_ascii=False)
+
+    return StreamingResponse(gen(), media_type="text/plain")
 
     return StreamingResponse(gen(), media_type="text/plain")
 
@@ -355,7 +387,6 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
 
 
 
