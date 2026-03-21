@@ -254,39 +254,38 @@
                             {rewardAnim && isPulsing && <div className="reward-popup">+15</div>}
                         </div>
                     </div>
-                    <div className="flex flex-col h-full overflow-y-auto pb-20">
-                        <div className="mb-6">
-                            <label className="text-xs uppercase text-muted mb-3 block font-bold tracking-widest">Язык обучения</label>
-                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide no-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <div className="flex flex-col h-full">
+                        <div className="mb-4">
+                            <label className="text-[10px] uppercase text-muted mb-2 block font-bold tracking-widest opacity-70">Язык обучения</label>
+                            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar items-center px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 {languages.map(l => (
                                     <button 
                                         key={l.id} 
                                         onClick={() => setSelectedLang(l.id)}
-                                        className={`px-4 py-3 rounded-2xl border text-sm transition-all flex flex-col items-center gap-1 min-w-[90px] flex-shrink-0 ${selectedLang === l.id ? 'border-accent bg-accent/10 text-white' : 'border-border bg-surface/50 text-muted'}`}
+                                        className={`w-12 h-12 rounded-xl border transition-all flex items-center justify-center flex-shrink-0 ${selectedLang === l.id ? 'border-accent bg-accent/20 scale-110 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'border-border bg-surface/30 opacity-50'}`}
                                     >
                                         <span className="text-2xl">{l.flag}</span>
-                                        <span className="font-bold whitespace-nowrap">{l.label}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="bg-surface/50 p-4 rounded-xl border border-border mb-6">
-                            <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
-                            <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="bg-surface/50 p-3 rounded-xl border border-border mb-4">
+                            <h2 className="font-semibold text-sm mb-1 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
                                 {presets.map((p, i) => (
-                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
-                                        <div className="font-semibold text-sm">{p.label}</div>
-                                        <div className="text-[10px] text-muted tracking-tight">{p.labelSit}</div>
+                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card !p-2 ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
+                                        <div className="font-semibold text-xs">{p.label}</div>
+                                        <div className="text-[9px] text-muted tracking-tight">{p.labelSit}</div>
                                     </button>
                                 ))}
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
-                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
+                        <div className="space-y-3">
+                            <div><label className="text-[10px] uppercase text-muted mb-1 block font-bold tracking-widest opacity-70">Роль собеседника</label><input className="input-field !p-3 !text-sm w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
+                            <div><label className="text-[10px] uppercase text-muted mb-1 block font-bold tracking-widest opacity-70">Ситуация</label><input className="input-field !p-3 !text-sm w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
                         </div>
-                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg mt-8">Начать диалог</button>
+                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-3 text-base mt-auto mb-4">Начать диалог</button>
                     </div>
                 </div>
             );
