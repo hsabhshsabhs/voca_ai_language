@@ -302,18 +302,18 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="analysis-modal !max-w-[340px]" onClick={e=>e.stopPropagation()}>
                         <div className="analysis-modal-header !py-3"><h2 className="font-bold gradient-text text-sm">{loading ? "Анализирую..." : "Разбор фразы"}</h2><button onClick={onClose} className="p-1 hover:bg-surfaceHover rounded-full"><Icons.X /></button></div>
-                        <div className="analysis-modal-content !p-4 min-h-[160px] transition-all duration-300">
+                        <div className="analysis-modal-content !p-4">
                             {loading ? (
-                                <div className="py-6 text-center animate-in fade-in duration-500"><div className="waiting-animation !mb-3"><div></div><div></div><div></div></div><p className="text-muted text-[10px] italic font-medium px-4">Готовлю подробный ответ...</p></div>
+                                <div className="py-6 text-center"><div className="waiting-animation !mb-3"><div></div><div></div><div></div></div><p className="text-muted text-[10px] italic font-medium px-4">Готовлю подробный ответ...</p></div>
                             ) : !content ? (
-                                <div className="animate-in fade-in zoom-in-95 duration-300">
+                                <div>
                                     <p className="text-center text-xs font-bold mb-4 text-white">Выбери стиль объяснения:</p>
                                     <div className="grid gap-2">
-                                        <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
+                                        <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left group">
                                             <div className="font-bold text-accent text-sm mb-0.5">Лучший друг</div>
                                             <div className="text-[10px] text-muted leading-tight">Просто и доходчиво.</div>
                                         </button>
-                                        <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
+                                        <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left group">
                                             <div className="font-bold text-white text-sm mb-0.5">Репетитор</div>
                                             <div className="text-[10px] text-muted leading-tight">Академический разбор.</div>
                                         </button>
@@ -324,7 +324,7 @@
                                     </div>
                                 </div>
                             ) : (
-                                <div className="analysis-content-old-style text-xs leading-relaxed animate-in fade-in duration-300" dangerouslySetInnerHTML={{__html: marked.parse(content)}} />
+                                <div className="analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content ? content.replace(/__+/g, ' ') : '')}} />
                             )}
                         </div>
                     </div>
@@ -420,15 +420,14 @@
 
         function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
             const scrollRef = useRef();
-            const prevMessagesLength = useRef(messages.length);
             const [visTrans, setVisTrans] = useState({});
-
-            useEffect(() => { 
-                // Скроллим вниз только если добавилось новое сообщение или идет загрузка (стриминг текста)
-                if (messages.length > prevMessagesLength.current || loading) {
-                    scrollRef.current?.scrollIntoView({ behavior: "smooth" }); 
+            const prevMsgCountRef = useRef(0);
+            useEffect(() => {
+                const isNewMsg = messages.length !== prevMsgCountRef.current;
+                prevMsgCountRef.current = messages.length;
+                if (isNewMsg) {
+                    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
                 }
-                prevMessagesLength.current = messages.length;
             }, [messages, loading]);
             return (
                 <div className="app-layout">
