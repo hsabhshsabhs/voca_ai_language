@@ -433,7 +433,7 @@
                     <main className="chat-zone">
                         {messages.map((m, i) => {
                             const isLast = i === messages.length - 1;
-                            const isAiLoading = m.role === 'assistant' && (!m.translation || (isLast && loading));
+                            const isAiLoading = m.role === 'assistant' && !m.content && loading;
                             return (
                                 <div key={m.id || i} className={`bubble ${m.role==='user'?'user':'ai'}`}>
                                     {m.role === 'promo' ? (
