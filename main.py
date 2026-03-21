@@ -161,13 +161,22 @@ async def explain(req: dict, user: User = Depends(get_current_user), db: Session
     # user.credits -= 1; db.commit()
     lang = req.get('lang', 'English')
     text = req.get('text', '')
+    mode = req.get('mode', 'academic') # 'academic' or 'informal'
+    
+    if mode == 'informal':
+        system_prompt = f"Ты — лучший друг и крутой наставник по языку {lang}. Объясняй максимально доходчиво, 'на пальцах', без заумных терминов, как другу. Используй примеры из жизни."
+    else:
+        system_prompt = f"Ты — профессиональный академический репетитор по языку {lang}. Давай глубокий грамматический разбор, объясняй правила и структуру предложения официально и четко."
+
     prompt = (
-        f"Ты профессиональный репетитор по языку: {lang}. "
-        f"КРАТКО объясни грамматику и структуру фразы: '{text}'. "
-        f"ОБЯЗАТЕЛЬНО для каждого значимого слова во фразе добавь фонетическую транскрипцию IPA в квадратных скобках [ ]. "
-        "Ответ дай на русском языке, используя Markdown для форматирования."
+        f"{system_prompt}\n\n"
+        f"Разбери фразу: '{text}'.\n"
+        f"1. Дай перевод на русский.\n"
+        f"2. ОБЯЗАТЕЛЬНО для каждого слова добавь фонетическую транскрипцию IPA в скобках [ ].\n"
+        f"3. Подробно объясни грамматику и нюансы употребления, чтобы пользователь всё усвоил.\n"
+        "Ответ дай на русском языке, используй Markdown для выделения жирным и списков."
     )
-    res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=700)
+    res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=1500)
     return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
 
 @app.post("/chat_stream")
