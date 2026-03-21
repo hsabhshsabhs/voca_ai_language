@@ -218,9 +218,9 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
                 try:
                     m = re.search(r'\{.*\}', str(c_raw), re.DOTALL)
                     if m:
-                        # Send correction and wait 3 seconds for user to read
+                        # Send correction and wait 10 seconds for user to read
                         yield f"||CORRECTION||{m.group(0)}||"
-                        await asyncio.sleep(3.5)
+                        await asyncio.sleep(10)
                 except: pass
 
         # 2. PROMO & AI RESPONSE
