@@ -231,6 +231,9 @@
                 { id: 'French', label: 'Français', flag: '🇫🇷' },
                 { id: 'Spanish', label: 'Español', flag: '🇪🇸' },
                 { id: 'Italian', label: 'Italiano', flag: '🇮🇹' },
+                { id: 'Japanese', label: '日本語', flag: '🇯🇵' },
+                { id: 'Chinese', label: '中文', flag: '🇨🇳' },
+                { id: 'Korean', label: '한국어', flag: '🇰🇷' },
             ];
 
             const presets = [
@@ -254,15 +257,15 @@
                     <div className="flex flex-col h-full overflow-y-auto pb-20">
                         <div className="mb-6">
                             <label className="text-xs uppercase text-muted mb-3 block font-bold tracking-widest">Язык обучения</label>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide no-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 {languages.map(l => (
                                     <button 
                                         key={l.id} 
                                         onClick={() => setSelectedLang(l.id)}
-                                        className={`p-2 rounded-xl border text-sm transition-all flex flex-col items-center gap-1 ${selectedLang === l.id ? 'border-accent bg-accent/10 text-white' : 'border-border bg-surface/50 text-muted'}`}
+                                        className={`px-4 py-3 rounded-2xl border text-sm transition-all flex flex-col items-center gap-1 min-w-[90px] flex-shrink-0 ${selectedLang === l.id ? 'border-accent bg-accent/10 text-white' : 'border-border bg-surface/50 text-muted'}`}
                                     >
-                                        <span className="text-xl">{l.flag}</span>
-                                        <span className="font-semibold">{l.label}</span>
+                                        <span className="text-2xl">{l.flag}</span>
+                                        <span className="font-bold whitespace-nowrap">{l.label}</span>
                                     </button>
                                 ))}
                             </div>
