@@ -207,23 +207,7 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
         else: 
             history.extend([{"role": m["role"], "content": m["content"]} for m in clean_hist])
         
-        # 1. GRAMMAR CHECK FIRST
-        user_msg = clean_hist[-1]['content'] if clean_hist and clean_hist[-1]['role'] == 'user' else ""
-        if user_msg:
-            c_raw = await deepseek_call([
-                {"role":"system", "content":f"Grammar check for {target_lang}. Return JSON {{\"corrected\":\"...\", \"explanation\":\"...\"}} in Russian or word NONE."}, 
-                {"role":"user", "content": f"Text: {user_msg}"}
-            ])
-            if c_raw and "NONE" not in str(c_raw).upper():
-                try:
-                    m = re.search(r'\{.*\}', str(c_raw), re.DOTALL)
-                    if m:
-                        # Send correction and wait 3.5 seconds for user to read
-                        yield f"||CORRECTION||{m.group(0)}||"
-                        await asyncio.sleep(3.5)
-                except: pass
-
-        # 2. PROMO & AI RESPONSE
+        # Check promo requirement
         is_sub = await check_subscription(user.telegram_id)
         promo = None
         if not is_sub and len(clean_hist) == 6:
@@ -249,13 +233,24 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
             {"role":"user", "content": t_prompt}
         ]))
         
-        s_prompt = f"Context: {full_res}. Language: {target_lang}."
+        # IMPROVED SUGGESTIONS PROMPT
+        s_system = (
+            f"You are a language tutor assistant. Based on the conversation, provide 2 short reply options for the USER (the student) to say next in {target_lang}. "
+            f"Return ONLY a JSON array: [{{\"target\":\"...\", \"ru\":\"...\"}}]. NO explanations, NO intro."
+        )
+        s_user_prompt = f"Scenario: {req['situation']}. AI character: {req['character']}. Last AI message: {full_res}. Provide 2 short user reply options."
         s_task = asyncio.create_task(deepseek_call([
-            {"role":"system", "content":f"Return ONLY a JSON array of 2 short {target_lang} reply options with Russian translations. Format: [{{'target':'...', 'ru':'...'}}]. NO chat, NO intro."}, 
-            {"role":"user", "content": s_prompt}
+            {"role":"system", "content": s_system}, 
+            {"role":"user", "content": s_user_prompt}
         ]))
         
-        trans, sug_raw = await asyncio.gather(t_task, s_task)
+        user_msg = clean_hist[-1]['content'] if clean_hist and clean_hist[-1]['role'] == 'user' else ""
+        c_task = asyncio.create_task(deepseek_call([
+            {"role":"system", "content":f"Grammar check for {target_lang}. Return JSON {{\"corrected\":\"...\", \"explanation\":\"...\"}} in Russian or word NONE."}, 
+            {"role":"user", "content": f"Text: {user_msg}"}
+        ])) if user_msg else None
+
+        trans, sug_raw, corr_raw = await asyncio.gather(t_task, s_task, c_task if c_task else asyncio.sleep(0, "NONE"))
         
         sug = []
         try:
@@ -263,9 +258,18 @@ async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
             if m: 
                 raw_sug = json.loads(m.group(0))[:2]
                 sug = [{"en": s.get('target', s.get('en', s.get('target_lang'))), "ru": s.get('ru')} for s in raw_sug]
-        except: pass
+        except: 
+            # Fallback if JSON parsing fails but content might be okay
+            logger.error(f"Failed to parse suggestions: {sug_raw}")
+        
+        corr_data = None
+        if corr_raw and "NONE" not in str(corr_raw).upper():
+            try:
+                m = re.search(r'\{.*\}', str(corr_raw), re.DOTALL)
+                if m: corr_data = json.loads(m.group(0))
+            except: pass
             
-        yield "||META||" + json.dumps({"translation": str(trans).strip(), "suggestions": sug, "user_correction": None, "promo": promo}, ensure_ascii=False)
+        yield "||META||" + json.dumps({"translation": str(trans).strip(), "suggestions": sug, "user_correction": corr_data, "promo": promo}, ensure_ascii=False)
 
     return StreamingResponse(gen(), media_type="text/plain")
 
@@ -396,6 +400,7 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 
 
 
