@@ -250,22 +250,22 @@
                 <div className="app-layout p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
                     <div className="flex justify-between items-center mb-8">
                         <div className="relative">
-                            <div onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center gap-2 bg-surface/80 border border-border px-3 py-2 rounded-xl cursor-pointer hover:bg-surfaceHover transition-all">
-                                <span className="text-xs font-bold text-muted uppercase tracking-tight">Язык:</span>
+                            <div onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center gap-2 bg-surface border border-border px-2 py-1.5 rounded-lg cursor-pointer hover:bg-surfaceHover transition-all">
                                 <span className="text-xl">{currentLang.flag}</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isLangOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isLangOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
                             </div>
                             {isLangOpen && (
-                                <div className="absolute top-full left-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl z-[100] w-48 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                <div className="absolute top-full left-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl z-[100] w-40 overflow-hidden animate-in fade-in slide-in-from-top-2">
                                     {languages.map(l => (
-                                        <div key={l.id} onClick={() => { setSelectedLang(l.id); setIsLangOpen(false); }} className={`p-3 flex items-center gap-3 hover:bg-accent/10 cursor-pointer transition-colors ${selectedLang === l.id ? 'bg-accent/20 text-white' : 'text-muted'}`}>
+                                        <div key={l.id} onClick={() => { setSelectedLang(l.id); setIsLangOpen(false); }} className={`p-2.5 flex items-center gap-3 hover:bg-accent/10 cursor-pointer transition-colors ${selectedLang === l.id ? 'bg-accent/20 text-white' : 'text-muted'}`}>
                                             <span className="text-xl">{l.flag}</span>
-                                            <span className="font-bold text-sm">{l.label}</span>
+                                            <span className="font-bold text-xs">{l.label}</span>
                                         </div>
                                     ))}
                                 </div>
                             )}
                         </div>
+                        <h1 className="text-xl font-display font-bold gradient-text">lingvo.ai</h1>
                         <div className="relative">
                             <div onClick={onShopOpen} className={`credits-badge ${isPulsing ? 'pulse' : ''}`}>
                                 <Icons.Gem /><span>{displayCredits}</span>
@@ -273,75 +273,59 @@
                             {rewardAnim && isPulsing && <div className="reward-popup">+15</div>}
                         </div>
                     </div>
-                    
-                    <div className="flex flex-col h-full overflow-y-auto pb-10">
-                        <div className="mb-10 text-center">
-                            <h1 className="text-4xl font-display font-black gradient-text mb-2">lingvo.ai</h1>
-                            <p className="text-muted text-sm font-medium">Твой интерактивный тренажер {currentLang.label}</p>
-                        </div>
-
-                        <div className="bg-surface/50 p-6 rounded-2xl border border-border mb-8 shadow-xl">
-                            <h2 className="font-bold text-lg mb-4 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
-                            <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col h-full">
+                        <div className="bg-surface/50 p-4 rounded-xl border border-border mb-6">
+                            <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
+                            <div className="grid grid-cols-2 gap-3 mt-4">
                                 {presets.map((p, i) => (
-                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card !p-4 h-24 flex flex-col justify-center ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
-                                        <div className="font-bold text-base mb-1">{p.label}</div>
-                                        <div className="text-xs text-muted tracking-tight leading-tight">{p.labelSit}</div>
+                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
+                                        <div className="font-semibold text-sm">{p.label}</div>
+                                        <div className="text-[10px] text-muted tracking-tight">{p.labelSit}</div>
                                     </button>
                                 ))}
                             </div>
                         </div>
-
-                        <div className="space-y-6 mb-10">
-                            <div>
-                                <label className="text-xs uppercase text-muted mb-3 block font-bold tracking-widest ml-1">Роль собеседника</label>
-                                <input className="input-field w-full py-4 px-5 text-lg" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="text-xs uppercase text-muted mb-3 block font-bold tracking-widest ml-1">Ситуация</label>
-                                <input className="input-field w-full py-4 px-5 text-lg" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} />
-                            </div>
+                        <div className="space-y-4">
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
                         </div>
-
-                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-5 text-xl font-black rounded-2xl shadow-[0_10px_30px_rgba(99,102,241,0.4)]">Начать обучение</button>
+                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg mt-8">Начать диалог</button>
                     </div>
                 </div>
             );
         }
+        }
 
         function AnalysisModal({ isOpen, onClose, content, loading, onModeSelect }) {
+            const [remember, setRemember] = useState(false);
             if (!isOpen) return null;
             return (
                 <div className="modal-overlay" onClick={onClose}>
-                    <div className="analysis-modal" onClick={e=>e.stopPropagation()}>
-                        <div className="analysis-modal-header">
-                            <h2 className="font-black text-xl gradient-text">{loading ? "Анализирую текст..." : "Разбор от lingvo.ai"}</h2>
-                            <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors"><Icons.X /></button>
-                        </div>
-                        <div className="analysis-modal-content">
+                    <div className="analysis-modal !max-w-[340px]" onClick={e=>e.stopPropagation()}>
+                        <div className="analysis-modal-header !py-3"><h2 className="font-bold gradient-text text-sm">{loading ? "Анализирую..." : "Разбор фразы"}</h2><button onClick={onClose} className="p-1 hover:bg-surfaceHover rounded-full"><Icons.X /></button></div>
+                        <div className="analysis-modal-content !p-4">
                             {loading ? (
-                                <div className="py-12 text-center">
-                                    <div className="waiting-animation"><div></div><div></div><div></div></div>
-                                    <p className="text-muted text-sm italic font-bold px-6">Готовлю подробный разбор, это займет немного времени...</p>
-                                </div>
+                                <div className="py-6 text-center"><div className="waiting-animation !mb-3"><div></div><div></div><div></div></div><p className="text-muted text-[10px] italic font-medium px-4">Готовлю подробный ответ...</p></div>
                             ) : !content ? (
-                                <div className="p-6">
-                                    <h3 className="text-center font-bold text-lg mb-6 text-white">Как тебе объяснить?</h3>
-                                    <div className="grid gap-4">
-                                        <button onClick={() => onModeSelect('informal')} className="w-full p-6 bg-surface border border-border rounded-2xl hover:border-accent transition-all text-left active:scale-95 group">
-                                            <div className="font-black text-accent text-lg mb-1 group-hover:translate-x-1 transition-transform">Лучший друг</div>
-                                            <div className="text-sm text-muted">Максимально просто, доходчиво и без лишней нагрузки на мозг.</div>
+                                <div>
+                                    <p className="text-center text-xs font-bold mb-4 text-white">Выбери стиль объяснения:</p>
+                                    <div className="grid gap-2">
+                                        <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
+                                            <div className="font-bold text-accent text-sm mb-0.5">Лучший друг</div>
+                                            <div className="text-[10px] text-muted leading-tight">Просто и доходчиво.</div>
                                         </button>
-                                        <button onClick={() => onModeSelect('academic')} className="w-full p-6 bg-surface border border-border rounded-2xl hover:border-accent transition-all text-left active:scale-95 group">
-                                            <div className="font-black text-white text-lg mb-1 group-hover:translate-x-1 transition-transform">Репетитор</div>
-                                            <div className="text-sm text-muted">Профессиональный академический разбор правил и грамматики.</div>
+                                        <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
+                                            <div className="font-bold text-white text-sm mb-0.5">Репетитор</div>
+                                            <div className="text-[10px] text-muted leading-tight">Академический разбор.</div>
                                         </button>
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-border flex items-center justify-center gap-2">
+                                        <input type="checkbox" id="remember" checked={remember} onChange={e=>setRemember(e.target.checked)} className="w-3.5 h-3.5 accent-accent" />
+                                        <label htmlFor="remember" className="text-[10px] text-muted cursor-pointer select-none">Запомнить до конца диалога</label>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="analysis-content-old-style">
-                                    <div dangerouslySetInnerHTML={{__html: marked.parse(content)}} />
-                                </div>
+                                <div className="analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content)}} />
                             )}
                         </div>
                     </div>
