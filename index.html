@@ -194,7 +194,7 @@
         const inviteFriend = () => {
             const userId = tg?.initDataUnsafe?.user?.id;
             if (!userId) return;
-            const text = encodeURIComponent("Практикуй английский с AI в lingvo.ai! По моей ссылке получишь +100 токенов на старт 🎁");
+            const text = encodeURIComponent("Практикуй английский с AI в lingvo.ai! По моей ссылке получишь +30 токенов на старт 🎁");
             const url = `https://t.me/share/url?url=https://t.me/${BOT_USERNAME}?start=ref_${userId}&text=${text}`;
             tg.openTelegramLink(url);
         };
@@ -362,7 +362,7 @@
                         </div>
                         <div className="pt-6 border-t border-border">
                             <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-2 text-center">Партнерская программа</h3>
-                            <p className="text-[11px] text-muted text-center mb-4 leading-relaxed">Получай <b>+100 токенов</b> сразу и <b>20% вознаграждения</b> в Stars от всех покупок друга!</p>
+                            <p className="text-[11px] text-muted text-center mb-4 leading-relaxed">Получай <b>+30 токенов</b> сразу и <b>20% вознаграждения</b> в Stars от всех покупок друга!</p>
                             <button onClick={inviteFriend} className="w-full p-4 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center gap-3 text-accent font-bold hover:bg-accent/20 transition-all active:scale-95">
                                 <Icons.UserPlus /> Стать партнером
                             </button>
@@ -385,7 +385,7 @@
                             </div>
                             <div className="flex items-start gap-4">
                                 <div className="credits-badge !static !m-0 !shrink-0 flex-none"><Icons.Gem /></div>
-                                <p className="leading-relaxed">Нажми на бриллиант, чтобы <b>пополнить баланс</b> или пригласить друга (+100 токенов).</p>
+                                <p className="leading-relaxed">Нажми на бриллиант, чтобы <b>пополнить баланс</b> или пригласить друга (+30 токенов).</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="btn-primary">Понятно!</button>
@@ -477,10 +477,10 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
                         <h2 className="text-2xl font-bold mb-4 font-display text-white">Токены закончились</h2>
-                        <p className="text-muted mb-8 leading-relaxed">Для продолжения обучения пополни баланс или пригласи друга и получи <b>+100 токенов</b>.</p>
+                        <p className="text-muted mb-8 leading-relaxed">Для продолжения обучения пополни баланс или пригласи друга и получи <b>+20 токенов</b>.</p>
                         <div className="space-y-3">
                             <button onClick={onShopOpen} className="btn-primary">Перейти в магазин</button>
-                            <button onClick={inviteFriend} className="btn-secondary flex items-center justify-center gap-2"><Icons.UserPlus /> Пригласить друга (+100)</button>
+                            <button onClick={inviteFriend} className="btn-secondary flex items-center justify-center gap-2"><Icons.UserPlus /> Пригласить друга (+20)</button>
                         </div>
                     </div>
                 </div>
