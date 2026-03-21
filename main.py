@@ -1,414 +1,637 @@
-import os
-import json
-import re
-import asyncio
-import logging
-import hmac
-import hashlib
-from datetime import datetime
-from typing import List, Optional
-from urllib.parse import parse_qsl
-
-from fastapi import FastAPI, Depends, HTTPException, status, Request
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, BigInteger, Boolean, Text, ForeignKey
-from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
-from jose import jwt
-import aiohttp
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# --- CONFIG ---
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-SECRET_KEY = os.getenv("SECRET_KEY", "lingvo_saas_ultra_final_2026")
-ALGORITHM = "HS256"
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
-MODEL = "deepseek-chat"
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-# --- DATABASE ---
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./web_app/backend/voca_users.db")
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-class Base(DeclarativeBase): pass
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, unique=True, index=True)
-    username = Column(String, nullable=True)
-    first_name = Column(String, nullable=True)
-    credits = Column(Float, default=100.0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_reward_at = Column(DateTime, default=datetime.utcnow)
-
-Base.metadata.create_all(bind=engine)
-
-def get_db():
-    db = SessionLocal()
-    try: yield db
-    finally: db.close()
-
-# --- TELEGRAM UTILS ---
-async def check_subscription(user_id: int) -> bool:
-    if not BOT_TOKEN: return True
-    channel_id = "@lingvoaichanel"
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, params={"chat_id": channel_id, "user_id": user_id}) as resp:
-                if resp.status != 200: return False
-                data = await resp.json()
-                if not data.get("ok"): return False
-                status = data["result"].get("status")
-                return status in ["member", "administrator", "creator"]
-        except: return False
-
-def verify_telegram_data(init_data: str) -> bool:
-    if not BOT_TOKEN: return False
-    try:
-        vals = dict(parse_qsl(init_data))
-        hash_val = vals.pop('hash')
-        data_check_string = '\n'.join([f"{k}={v}" for k, v in sorted(vals.items())])
-        secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-        h = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
-        return h == hash_val
-    except: return False
-
-def create_access_token(data: dict):
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
-
-async def get_current_user(request: Request, db: Session = Depends(get_db)):
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "): raise HTTPException(status_code=401)
-    token = auth_header.split(" ")[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        tg_id = payload.get("sub")
-        user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
-        if not user: raise HTTPException(status_code=401)
-        return user
-    except: raise HTTPException(status_code=401)
-
-# --- AI CALLS ---
-async def deepseek_call(messages: List[dict], max_tokens: int = 1000):
-    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.post(DEEPSEEK_URL, headers=headers, json={"model": MODEL, "messages": messages, "max_tokens": max_tokens}, timeout=60) as resp:
-                if resp.status != 200: return f"Error API ({resp.status})"
-                data = await resp.json()
-                return data['choices'][0]['message']['content'].strip()
-        except Exception as e: return f"Error: {str(e)[:50]}"
-
-# --- APP ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    if os.path.exists("index.html"):
-        with open("index.html", "r", encoding="utf-8") as f: return f.read()
-    return "<h1>lingvo.ai</h1>"
-
-@app.post("/auth/telegram")
-async def auth_telegram(req: dict, db: Session = Depends(get_db)):
-    init_data = req.get("initData")
-    if not verify_telegram_data(init_data): raise HTTPException(status_code=403)
-    data = dict(parse_qsl(init_data))
-    user_data = json.loads(data.get("user", "{}"))
-    tg_id = user_data.get("id")
-    user = db.query(User).filter(User.telegram_id == tg_id).first()
-    if not user:
-        user = User(telegram_id=tg_id, username=user_data.get("username"), first_name=user_data.get("first_name"), credits=100.0)
-        db.add(user); db.commit(); db.refresh(user)
-    return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
-
-@app.get("/me")
-async def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Daily reward logic
-    now = datetime.utcnow()
-    today = now.date()
-    last_reward_date = user.last_reward_at.date() if user.last_reward_at else None
-    
-    reward_given = False
-    if user.credits < 50 and last_reward_date != today:
-        user.credits += 15.0
-        user.last_reward_at = now
-        db.commit()
-        db.refresh(user)
-        reward_given = True
-        
-    return {
-        "username": user.first_name or user.username or "User", 
-        "credits": user.credits,
-        "reward_given": reward_given
-    }
-
-@app.post("/explain")
-async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # if user.credits < 1: raise HTTPException(status_code=402)
-    # user.credits -= 1; db.commit()
-    lang = req.get('lang', 'English')
-    text = req.get('text', '')
-    mode = req.get('mode', 'academic') # 'academic' or 'informal'
-    
-    if mode == 'informal':
-        system_prompt = f"Ты — лучший друг и крутой наставник по языку {lang}. Объясняй максимально доходчиво, 'на пальцах', без заумных терминов, как другу. Используй примеры из жизни."
-    else:
-        system_prompt = f"Ты — профессиональный академический репетитор по языку {lang}. Давай глубокий грамматический разбор, объясняй правила и структуру предложения официально и четко."
-
-    prompt = (
-        f"{system_prompt}\n\n"
-        f"Разбери фразу: '{text}'.\n"
-        f"1. Дай перевод на русский.\n"
-        f"2. ОБЯЗАТЕЛЬНО для каждого слова добавь фонетическую транскрипцию IPA в скобках [ ].\n"
-        f"3. Подробно объясни грамматику и нюансы употребления, чтобы пользователь всё усвоил.\n"
-        "Ответ дай на русском языке, используй Markdown для выделения жирным и списков."
-    )
-    res = await deepseek_call([{"role": "user", "content": prompt}], max_tokens=1500)
-    return {"explanation": res or "Не удалось получить ответ", "credits": user.credits}
-
-@app.post("/chat_stream")
-async def chat_stream(req: dict, token: str, db: Session = Depends(get_db)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        tg_id = payload.get("sub")
-        user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
-        if not user or user.credits < 1: return StreamingResponse(iter(["||ERROR||Credits"]), media_type="text/plain")
-    except: return StreamingResponse(iter(["||ERROR||Auth"]), media_type="text/plain")
-
-    user.credits -= 1; db.commit()
-    target_lang = req.get('lang', 'English')
-
-    async def gen():
-        full_res = ""
-        headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-        system_content = (
-            f"ACT AS: {req['character']}. SCENARIO: {req['situation']}. "
-            f"ALWAYS respond in {target_lang} ONLY. BE VERY CONCISE. MAX 2-3 SHORT SENTENCES. "
-            "Do not write long descriptions."
-        )
-        history = [{"role": "system", "content": system_content}]
-        clean_hist = [m for m in req.get('history', []) if m.get("content")]
-        if not clean_hist: 
-            history.append({"role": "user", "content": f"Start conversation in {target_lang}."})
-        else: 
-            history.extend([{"role": m["role"], "content": m["content"]} for m in clean_hist])
-        
-        # Check promo requirement
-        is_sub = await check_subscription(user.telegram_id)
-        promo = None
-        if not is_sub and len(clean_hist) == 6:
-            promo = "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!"
-
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(DEEPSEEK_URL, headers=headers, json={"model": MODEL, "messages": history, "stream": True}) as resp:
-                    async for line in resp.content:
-                        lt = line.decode('utf-8').strip()
-                        if lt.startswith("data: ") and lt != "data: [DONE]":
-                            try:
-                                chunk = json.loads(lt[6:])['choices'][0]['delta'].get('content', '')
-                                full_res += chunk; yield chunk
-                            except: continue
-            except: yield "||ERROR||Lost"
-        
-        await asyncio.sleep(0.1)
-        # Translation and Suggestions
-        t_prompt = f"Translate this {target_lang} text to Russian strictly: {full_res}"
-        t_task = asyncio.create_task(deepseek_call([
-            {"role":"system", "content":"You are a professional translator. Return ONLY the translated Russian text."}, 
-            {"role":"user", "content": t_prompt}
-        ]))
-        
-        # IMPROVED SUGGESTIONS PROMPT
-        s_system = (
-            f"You are a language tutor assistant. Based on the conversation, provide 2 short reply options for the USER (the student) to say next in {target_lang}. "
-            f"Return ONLY a JSON array: [{{\"target\":\"...\", \"ru\":\"...\"}}]. NO explanations, NO intro."
-        )
-        s_user_prompt = f"Scenario: {req['situation']}. AI character: {req['character']}. Last AI message: {full_res}. Provide 2 short user reply options."
-        s_task = asyncio.create_task(deepseek_call([
-            {"role":"system", "content": s_system}, 
-            {"role":"user", "content": s_user_prompt}
-        ]))
-        
-        user_msg = clean_hist[-1]['content'] if clean_hist and clean_hist[-1]['role'] == 'user' else ""
-        c_task = asyncio.create_task(deepseek_call([
-            {"role":"system", "content":f"Grammar check for {target_lang}. Return JSON {{\"corrected\":\"...\", \"explanation\":\"...\"}} in Russian or word NONE."}, 
-            {"role":"user", "content": f"Text: {user_msg}"}
-        ])) if user_msg else None
-
-        trans, sug_raw, corr_raw = await asyncio.gather(t_task, s_task, c_task if c_task else asyncio.sleep(0, "NONE"))
-        
-        sug = []
-        try:
-            m = re.search(r'\[\s*\{.*\}\s*\]', str(sug_raw), re.DOTALL)
-            if m: 
-                raw_sug = json.loads(m.group(0))[:2]
-                sug = [{"en": s.get('target', s.get('en', s.get('target_lang'))), "ru": s.get('ru')} for s in raw_sug]
-        except: 
-            # Fallback if JSON parsing fails but content might be okay
-            logger.error(f"Failed to parse suggestions: {sug_raw}")
-        
-        corr_data = None
-        if corr_raw and "NONE" not in str(corr_raw).upper():
-            try:
-                m = re.search(r'\{.*\}', str(corr_raw), re.DOTALL)
-                if m: corr_data = json.loads(m.group(0))
-            except: pass
-            
-        yield "||META||" + json.dumps({"translation": str(trans).strip(), "suggestions": sug, "user_correction": corr_data, "promo": promo}, ensure_ascii=False)
-
-    return StreamingResponse(gen(), media_type="text/plain")
-
-@app.post("/create-invoice")
-async def create_invoice(req: dict, user: User = Depends(get_current_user)):
-    amount = req.get("amount", 100)
-    invoice_data = {"title": f"Refill: {amount*2} Credits", "description": "lingvo.ai currency", "payload": f"stars_{user.telegram_id}_{int(datetime.now().timestamp())}", "currency": "XTR", "prices": [{"label": "Credits", "amount": amount}]}
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/createInvoiceLink"
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=invoice_data) as resp:
-            data = await resp.json()
-            if data.get("ok"): return {"invoice_link": data["result"]}
-            raise HTTPException(status_code=500)
-
-@app.get("/webhook/telegram")
-async def telegram_webhook_test():
-    return {"status": "Webhook endpoint is alive. Please use POST for Telegram updates."}
-
-@app.post("/webhook/telegram")
-async def telegram_webhook(request: Request):
-    try:
-        update = await request.json()
-    except:
-        return {"ok": False}
-    
-    if "pre_checkout_query" in update:
-        pq = update["pre_checkout_query"]
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerPreCheckoutQuery"
-        async with aiohttp.ClientSession() as session:
-            await session.post(url, json={"pre_checkout_query_id": pq["id"], "ok": True})
-        return {"ok": True}
-
-    if "callback_query" in update:
-        cb = update["callback_query"]
-        if cb.get("data") == "affiliate_info":
-            user_id = cb["from"]["id"]
-            async with aiohttp.ClientSession() as session:
-                bot_resp = await session.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
-                bot_data = await bot_resp.json()
-                bot_username = bot_data.get("result", {}).get("username", "lingvo_ai_bot")
-                
-                aff_text = (
-                    "<b>💼 Партнерская программа</b>\n\n"
-                    "Стань нашим амбассадором и получай двойную выгоду:\n\n"
-                    "🎁 <b>+100 токенов</b> сразу за каждого приглашенного друга.\n\n"
-                    "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга!\n\n"
-                    f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
-                )
-                url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-                await session.post(url, json={
-                    "chat_id": user_id,
-                    "text": aff_text,
-                    "parse_mode": "HTML",
-                    "reply_markup": {
-                        "inline_keyboard": [[{"text": "🚀 Пригласить друзей", "url": f"https://t.me/share/url?url=https://t.me/{bot_username}?start=ref_{user_id}&text=Практикуй%20английский%20с%20AI%20в%20lingvo.ai!%20По%20моей%20ссылке%20получишь%20+100%20токенов%20на%20старт%20🎁"}]]
-                    }
-                })
-        return {"ok": True}
-
-    message = update.get("message", {})
-    if "successful_payment" in message:
-        sp = message["successful_payment"]
-        payload = sp.get("invoice_payload", "")
-        if payload.startswith("stars_"):
-            try:
-                tg_id = int(payload.split("_")[1])
-                db = SessionLocal()
-                user = db.query(User).filter(User.telegram_id == tg_id).first()
-                if user:
-                    user.credits += sp["total_amount"] * 2
-                    db.commit()
-                db.close()
-            except: pass
-        return {"ok": True}
-
-    text = message.get("text", "")
-    chat_id = message.get("chat", {}).get("id")
-    if text.startswith("/start") and chat_id:
-        db = SessionLocal()
-        user = db.query(User).filter(User.telegram_id == chat_id).first()
-        if not user:
-            user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=100.0)
-            db.add(user); db.commit()
-            if "ref_" in text:
-                try:
-                    ref_id = int(text.split("ref_")[1])
-                    if ref_id != chat_id:
-                        referrer = db.query(User).filter(User.telegram_id == ref_id).first()
-                        if referrer:
-                            referrer.credits += 100.0; db.commit()
-                            async with aiohttp.ClientSession() as session:
-                                await session.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
-                                    "chat_id": ref_id,
-                                    "text": "<b>Ура!</b> 🎉 По твоей ссылке новый пользователь! Тебе начислено <b>100 токенов</b> 🎁 и <b>20%</b> от его будущих покупок.",
-                                    "parse_mode": "HTML"
-                                })
-                except: pass
-        db.close()
-
-        welcome_text = (
-            "<b>lingvo ai — твой интерактивный тренажер иностранных языков</b> 🚀\n\n"
-            "Практикуй <b>английский, немецкий, французский, испанский, итальянский, японский, китайский или корейский</b> в диалогах с AI. Получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-            "✅ <b>Любые роли, ситуации и языки.</b>\n"
-            "✅ <b>Автоматическая проверка ошибок.</b>\n"
-            "✅ <b>Разбор с транскрипцией по кнопке «?».</b>\n"
-            "✅ <b>Умные варианты ответов</b>.\n\n"
-            "💰 <b>Зарабатывай вместе с нами!</b> Получай +100 токенов за друга и 20% от его покупок.\n\n"
-            "<b>Нажми кнопку \"Open\" и начни обучение прямо сейчас!</b>"
-        )
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendAnimation"
-        async with aiohttp.ClientSession() as session:
-            await session.post(url, json={
-                "chat_id": chat_id, 
-                "animation": "https://raw.githubusercontent.com/hsabhshsabhs/voca_ai_language/main/Image/gif.mp4",
-                "caption": welcome_text, 
-                "parse_mode": "HTML", 
-                "disable_web_page_preview": False,
-                "reply_markup": {
-                    "inline_keyboard": [
-                        [{"text": "📢 Наш Telegram канал", "url": "https://t.me/lingvoaichanel"}],
-                        [{"text": "💼 Партнерская программа", "callback_data": "affiliate_info"}]
-                    ]
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>lingvo.ai — Твой AI репетитор</title>
+    <!-- Telegram Web App Script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#0a0a0f',
+                        surface: '#111118',
+                        surfaceHover: '#1a1a24',
+                        border: '#1f1f2e',
+                        borderLight: '#2a2a3e',
+                        foreground: '#f4f4f5',
+                        muted: '#71717a',
+                        accent: '#6366f1',
+                        accentLight: '#818cf8',
+                        accentDark: '#4f46e5',
+                        success: '#22c55e',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+                    },
                 }
-            })
-        return {"ok": True}
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #050508; color: #f4f4f5; }
+        body { font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 4px; }
+        
+        #root { display: flex; justify-content: center; background: #050508; }
+        .app-layout { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 600px; margin: 0 auto; background: #0a0a0f; position: relative; border-left: 1px solid #1f1f2e; border-right: 1px solid #1f1f2e; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        .app-header { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; background: linear-gradient(180deg, #111118 0%, #0a0a0f 100%); border-bottom: 1px solid #1f1f2e; z-index: 20; flex-shrink: 0; }
+        .chat-zone { flex: 1; overflow-y: auto; padding: 1rem 50px; background: radial-gradient(ellipse at top, #111118 0%, #0a0a0f 50%); scroll-behavior: smooth; }
+        
+        .bottom-panel { display: flex; flex-direction: column; border-top: 1px solid #1f1f2e; background: #111118; padding-bottom: calc(1rem + env(safe-area-inset-bottom)); flex-shrink: 0; }
+        .input-bar { min-height: 64px; padding: 0.75rem 1rem; display: flex; gap: 0.75rem; align-items: center; background: #0a0a0f; }
 
-    return {"ok": True}
+        @media (min-width: 601px) {
+            .chat-zone { padding: 1rem 1.5rem; }
+            .explain-btn { right: 10px; top: -15px; }
+            .bubble.user .explain-btn { left: 10px; right: auto; }
+        }
+        
+        .suggestions-ribbon { display: flex; align-items: center; padding: 0.75rem 1rem; gap: 0.75rem; overflow-x: auto; white-space: nowrap; scrollbar-width: none; background: #111118; scroll-snap-type: x mandatory; }
+        .suggestions-ribbon::-webkit-scrollbar { display: none; }
+        
+        .suggestion-pill { background: #1a1a24; border: 1px solid #2a2a3e; border-radius: 1.25rem; padding: 0.75rem 1.25rem; transition: all 0.2s; cursor: pointer; flex-shrink: 0; min-width: 85%; scroll-snap-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .suggestion-pill:hover { border-color: #6366f1; background: #222230; }
+        .suggestion-pill .en { font-size: 0.9375rem; font-weight: 700; color: #f4f4f5; display: block; overflow: hidden; text-overflow: ellipsis; }
+        .suggestion-pill .ru { font-size: 11px; color: #71717a; display: block; font-weight: 400; margin-top: 2px; }
+        
+        .bubble { max-width: 85%; border-radius: 1.25rem; padding: 0.875rem 1rem; margin-bottom: 0.75rem; position: relative; font-size: 0.9375rem; line-height: 1.5; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .bubble.user { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; margin-left: auto; border-bottom-right-radius: 0.375rem; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3); }
+        .bubble.ai { background: #1a1a24; color: #f4f4f5; border-bottom-left-radius: 0.375rem; border: 1px solid #2a2a3e; }
+        
+        .modal-overlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); z-index: 1000; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        .modal-content { background: #111118; width: 100%; max-width: 420px; border-radius: 1.5rem; padding: 1.5rem; border: 1px solid #2a2a3e; position: relative; z-index: 100; }
+        
+        .explain-btn { width: 30px; height: 30px; background: rgba(251, 191, 36, 0.1); color: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; border: 1px solid rgba(251, 191, 36, 0.3); transition: all 0.2s; cursor: pointer; }
+        .explain-btn.disabled { opacity: 0.2 !important; cursor: default !important; pointer-events: none; }
+        .bubble .explain-btn { position: absolute; right: -40px; top: 5px; }
+        .bubble.user .explain-btn { background: rgba(99, 102, 241, 0.1); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); left: -40px; right: auto; }
+        .explain-btn:not(.disabled):hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(251, 191, 36, 0.2); }
+        .explain-btn.loading { animation: rotate 1s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .show-trans-btn { color: #818cf8; font-size: 0.8125rem; font-weight: 500; margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; }
+        
+        .dot-pulse { display: flex; gap: 4px; padding: 4px 0; }
+        .dot-pulse span { width: 8px; height: 8px; background: #6366f1; border-radius: 50%; animation: dotPulse 1.4s ease-in-out infinite; }
+        .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+        .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+        
+        .waiting-animation { display: flex; gap: 12px; justify-content: center; margin: 2rem 0; }
+        .waiting-animation div { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); animation: bounce-wave 1.2s infinite ease-in-out; }
+        .waiting-animation div:nth-child(2) { animation-delay: 0.2s; background: linear-gradient(135deg, #a855f7, #ec4899); }
+        .waiting-animation div:nth-child(3) { animation-delay: 0.4s; background: linear-gradient(135deg, #ec4899, #6366f1); }
+        @keyframes bounce-wave { 0%, 80%, 100% { transform: translateY(0); opacity: 0.3; } 40% { transform: translateY(-15px); opacity: 1; } }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+        .btn-primary { width: 100%; padding: 1.125rem; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border-radius: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+        .btn-primary:active { transform: scale(0.97); }
+        
+        .btn-start { margin-top: auto; margin-bottom: 2rem; animation: start-glow 3s infinite ease-in-out; }
+        @keyframes start-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); opacity: 0.9; } 50% { box-shadow: 0 0 25px 8px rgba(99, 102, 241, 0.6); opacity: 1; } }
 
+        .credits-badge { display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.75rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 2rem; font-size: 0.875rem; font-weight: 600; color: #a5b4fc; cursor: pointer; transition: all 0.2s; }
+        
+        .correction-panel { margin-top: 0.5rem; padding: 0.625rem 0.75rem; background: #1a1a24; border: 1px solid #2a2a3e; border-radius: 0.625rem; font-size: 0.8125rem; }
+        .correction-panel .corrected { color: #22c55e; font-weight: 600; }
+        .correction-panel .explanation { color: #a1a1aa; margin-top: 0.25rem; font-size: 0.75rem; font-style: italic; }
+        
+        .analysis-modal { background: #0a0a0f; width: 100%; max-width: 600px; max-height: 85vh; border-radius: 2rem; border: 1px solid #1f1f2e; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; }
+        .analysis-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #1f1f2e; background: #111118; }
+        .analysis-modal-content { flex: 1; overflow-y: auto; padding: 1.5rem; line-height: 1.7; }
+        .analysis-modal-content h3 { color: #818cf8; font-weight: 700; border-bottom: 2px solid rgba(99, 102, 241, 0.2); padding-bottom: 4px; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .analysis-modal-content strong { color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 0 4px; border-radius: 4px; }
+        
+        .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        
+        .input-field { width: 100%; padding: 0.875rem 1.25rem; background: #1a1a24; border: 1px solid #2a2a3e; border-radius: 1rem; color: #f4f4f5; outline: none; transition: border-color 0.2s; font-size: 0.9375rem; }
+        .input-field:focus { border-color: #6366f1; }
 
+        .feature-card { background: #111118; border: 1px solid #1f1f2e; border-radius: 1rem; padding: 1rem; transition: all 0.2s; text-align: left; width: 100%; border: 1px solid #1f1f2e; }
+        .feature-card.active { border-color: #6366f1; background: rgba(99, 102, 241, 0.05); box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
 
+        @keyframes glow-pulse {
+            0%, 100% { border-color: #1f1f2e; box-shadow: none; }
+            50% { border-color: #6366f1; box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
+        }
+        .animate-preset-0 { animation: glow-pulse 4s infinite 0s; }
+        .animate-preset-1 { animation: glow-pulse 4s infinite 1s; }
+        .animate-preset-2 { animation: glow-pulse 4s infinite 2s; }
+        .animate-preset-3 { animation: glow-pulse 4s infinite 3s; }
 
+        .stars-container { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; opacity: 0.5; }
+        .falling-star { position: absolute; top: 0; color: #fbbf24; animation: star-fall linear infinite; filter: blur(0.3px); opacity: 0; }
+        @keyframes star-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
 
+        .btn-secondary { width: 100%; padding: 1.125rem; background: rgba(255, 255, 255, 0.05); color: #f4f4f5; border: 1px solid #2a2a3e; border-radius: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-secondary:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.1); }
 
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-40px); opacity: 0; }
+        }
+        .reward-popup {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            color: #22c55e;
+            font-weight: 800;
+            font-size: 1.25rem;
+            pointer-events: none;
+            animation: float-up 1.5s forwards;
+            z-index: 100;
+        }
+        .credits-badge.pulse {
+            animation: badge-pulse 0.5s ease-in-out;
+        }
+        @keyframes badge-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const API_BASE = "";
+        const BOT_USERNAME = "lingvo_ai_bot"; 
 
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
+            tg.enableClosingConfirmation();
+        }
 
+        const Icons = {
+            Send: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+            Eye: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+            Back: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+            Gem: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="m12 22 4-13-3-6"/><path d="m12 22-4-13 3-6"/><path d="M2 9h20"/></svg>,
+            X: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Sparkles: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>,
+            UserPlus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
+        };
 
+        const inviteFriend = () => {
+            const userId = tg?.initDataUnsafe?.user?.id;
+            if (!userId) return;
+            const text = encodeURIComponent("Практикуй английский с AI в lingvo.ai! По моей ссылке получишь +100 токенов на старт 🎁");
+            const url = `https://t.me/share/url?url=https://t.me/${BOT_USERNAME}?start=ref_${userId}&text=${text}`;
+            tg.openTelegramLink(url);
+        };
 
+        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim, selectedLang, setSelectedLang }) {
+            const [displayCredits, setDisplayCredits] = useState(credits);
+            const [isPulsing, setIsPulsing] = useState(false);
+            const [isLangOpen, setIsLangOpen] = useState(false);
 
+            useEffect(() => {
+                if (rewardAnim) {
+                    setDisplayCredits(credits - 15);
+                    setTimeout(() => {
+                        let start = credits - 15;
+                        const end = credits;
+                        setIsPulsing(true);
+                        const interval = setInterval(() => {
+                            if (start < end) {
+                                start++;
+                                setDisplayCredits(start);
+                            } else {
+                                clearInterval(interval);
+                                setTimeout(() => setIsPulsing(false), 500);
+                            }
+                        }, 50);
+                    }, 1000);
+                } else {
+                    setDisplayCredits(credits);
+                }
+            }, [credits, rewardAnim]);
 
+            const languages = [
+                { id: 'English', label: 'English', flag: '🇬🇧' },
+                { id: 'German', label: 'Deutsch', flag: '🇩🇪' },
+                { id: 'French', label: 'Français', flag: '🇫🇷' },
+                { id: 'Spanish', label: 'Español', flag: '🇪🇸' },
+                { id: 'Italian', label: 'Italiano', flag: '🇮🇹' },
+                { id: 'Japanese', label: '日本語', flag: '🇯🇵' },
+                { id: 'Chinese', label: '中文', flag: '🇨🇳' },
+                { id: 'Korean', label: '한국어', flag: '🇰🇷' },
+            ];
+
+            const currentLang = languages.find(l => l.id === selectedLang) || languages[0];
+
+            const presets = [
+                { char: "Бариста", sit: "Заказ кофе", label: "Бариста", labelSit: "Заказ кофе" },
+                { char: "Доктор", sit: "Прием у врача", label: "Врач", labelSit: "Прием у врача" },
+                { char: "Гид", sit: "Экскурсия", label: "Гид", labelSit: "Экскурсия" },
+                { char: "Продавец", sit: "Покупка одежды", label: "Продавец", labelSit: "Покупка одежды" },
+            ];
+            const isAnyPresetActive = presets.some(p => character === p.char && situation === p.sit);
+            return (
+                <div className="app-layout p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
+                    <div className="flex justify-between items-center mb-8">
+                        <div className="relative">
+                            <div onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center gap-2 bg-surface border border-border px-2 py-1.5 rounded-lg cursor-pointer hover:bg-surfaceHover transition-all">
+                                <span className="text-xl">{currentLang.flag}</span>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isLangOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            {isLangOpen && (
+                                <div className="absolute top-full left-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl z-[100] w-40 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                    {languages.map(l => (
+                                        <div key={l.id} onClick={() => { setSelectedLang(l.id); setIsLangOpen(false); }} className={`p-2.5 flex items-center gap-3 hover:bg-accent/10 cursor-pointer transition-colors ${selectedLang === l.id ? 'bg-accent/20 text-white' : 'text-muted'}`}>
+                                            <span className="text-xl">{l.flag}</span>
+                                            <span className="font-bold text-xs">{l.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <h1 className="text-xl font-display font-bold gradient-text">lingvo.ai</h1>
+                        <div className="relative">
+                            <div onClick={onShopOpen} className={`credits-badge ${isPulsing ? 'pulse' : ''}`}>
+                                <Icons.Gem /><span>{displayCredits}</span>
+                            </div>
+                            {rewardAnim && isPulsing && <div className="reward-popup">+15</div>}
+                        </div>
+                    </div>
+                    <div className="flex flex-col h-full">
+                        <div className="bg-surface/50 p-4 rounded-xl border border-border mb-6">
+                            <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
+                            <div className="grid grid-cols-2 gap-3 mt-4">
+                                {presets.map((p, i) => (
+                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
+                                        <div className="font-semibold text-sm">{p.label}</div>
+                                        <div className="text-[10px] text-muted tracking-tight">{p.labelSit}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
+                        </div>
+                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg mt-8">Начать диалог</button>
+                    </div>
+                </div>
+            );
+        }
+        }
+
+        function AnalysisModal({ isOpen, onClose, content, loading, onModeSelect }) {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="analysis-modal" onClick={e=>e.stopPropagation()}>
+                        <div className="analysis-modal-header">
+                            <h2 className="font-black text-xl gradient-text">{loading ? "Анализирую текст..." : "Разбор от lingvo.ai"}</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors"><Icons.X /></button>
+                        </div>
+                        <div className="analysis-modal-content">
+                            {loading ? (
+                                <div className="py-12 text-center">
+                                    <div className="waiting-animation"><div></div><div></div><div></div></div>
+                                    <p className="text-muted text-sm italic font-bold px-6">Готовлю подробный разбор, это займет немного времени...</p>
+                                </div>
+                            ) : !content ? (
+                                <div className="p-6">
+                                    <h3 className="text-center font-bold text-lg mb-6 text-white">Как тебе объяснить?</h3>
+                                    <div className="grid gap-4">
+                                        <button onClick={() => onModeSelect('informal')} className="w-full p-6 bg-surface border border-border rounded-2xl hover:border-accent transition-all text-left active:scale-95 group">
+                                            <div className="font-black text-accent text-lg mb-1 group-hover:translate-x-1 transition-transform">Лучший друг</div>
+                                            <div className="text-sm text-muted">Максимально просто, доходчиво и без лишней нагрузки на мозг.</div>
+                                        </button>
+                                        <button onClick={() => onModeSelect('academic')} className="w-full p-6 bg-surface border border-border rounded-2xl hover:border-accent transition-all text-left active:scale-95 group">
+                                            <div className="font-black text-white text-lg mb-1 group-hover:translate-x-1 transition-transform">Репетитор</div>
+                                            <div className="text-sm text-muted">Профессиональный академический разбор правил и грамматики.</div>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="analysis-content-old-style">
+                                    <div dangerouslySetInnerHTML={{__html: marked.parse(content)}} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function ShopModal({ onClose, token, onPurchaseSuccess }) {
+            const [loading, setLoading] = useState(false);
+            const packages = [{ stars: 50, credits: 100 }, { stars: 100, credits: 250 }, { stars: 500, credits: 1500 }];
+            const buy = async (amount) => {
+                setLoading(true);
+                try {
+                    const res = await fetch(`${API_BASE}/create-invoice`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ amount }) });
+                    const data = await res.json();
+                    if (data.invoice_link) { tg.openInvoice(data.invoice_link, (status) => { if (status === 'paid') { onPurchaseSuccess(); onClose(); } }); }
+                } catch (e) { alert("Ошибка"); } finally { setLoading(false); }
+            };
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="stars-container">
+                        {[...Array(20)].map((_, i) => (
+                            <div key={i} className="falling-star" style={{left: `${Math.random() * 100}%`, animationDuration: `${3 + Math.random() * 5}s`, animationDelay: `${-Math.random() * 10}s`, fontSize: `${10 + Math.random() * 15}px`, animationFillMode: 'both'}}>⭐</div>
+                        ))}
+                    </div>
+                    <div className="modal-content" onClick={e=>e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors text-white"><Icons.X /></button></div>
+                        <div className="space-y-3 mb-8">
+                            {packages.map((p, i) => (
+                                <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
+                                    <div className="font-bold text-lg text-white">{p.credits} токенов</div>
+                                    <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold">{p.stars} ⭐</div>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="pt-6 border-t border-border">
+                            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-2 text-center">Партнерская программа</h3>
+                            <p className="text-[11px] text-muted text-center mb-4 leading-relaxed">Получай <b>+100 токенов</b> сразу и <b>20% вознаграждения</b> в Stars от всех покупок друга!</p>
+                            <button onClick={inviteFriend} className="w-full p-4 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center gap-3 text-accent font-bold hover:bg-accent/20 transition-all active:scale-95">
+                                <Icons.UserPlus /> Стать партнером
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function OnboardingModal({ isOpen, onClose }) {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay">
+                    <div className="modal-content text-center">
+                        <h2 className="text-xl font-bold mb-6 gradient-text font-display">Как пользоваться?</h2>
+                        <div className="space-y-6 text-sm text-left mb-8">
+                            <div className="flex items-start gap-4">
+                                <div className="explain-btn !static !m-0 !shrink-0 flex-none">?</div>
+                                <p className="leading-relaxed">Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики, перевода и транскрипции.</p>
+                            </div>
+                            <div className="flex items-start gap-4">
+                                <div className="credits-badge !static !m-0 !shrink-0 flex-none"><Icons.Gem /></div>
+                                <p className="leading-relaxed">Нажми на бриллиант, чтобы <b>пополнить баланс</b> или пригласить друга (+100 токенов).</p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="btn-primary">Понятно!</button>
+                        <button onClick={() => { localStorage.setItem('lingvo_hint_seen', 'true'); onClose(); }} className="text-xs text-muted mt-6 block w-full hover:text-white transition-all">Не показывать больше</button>
+                    </div>
+                </div>
+            );
+        }
+
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
+            const scrollRef = useRef();
+            const [visTrans, setVisTrans] = useState({});
+            useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+            return (
+                <div className="app-layout">
+                    <header className="app-header"><button onClick={onBack} className="p-2 hover:bg-surfaceHover rounded-lg"><Icons.Back /></button><h2 className="font-display font-bold text-lg gradient-text">lingvo.ai</h2><div onClick={onShopOpen} className="credits-badge"><Icons.Gem /><span>{credits}</span></div></header>
+                    <main className="chat-zone">
+                        {messages.map((m, i) => {
+                            const isLast = i === messages.length - 1;
+                            const isAiLoading = m.role === 'assistant' && (!m.translation || (isLast && loading));
+                            return (
+                                <div key={m.id || i} className={`bubble ${m.role==='user'?'user':'ai'}`}>
+                                    {m.role === 'promo' ? (
+                                        <div className="bg-surface border border-accent/30 rounded-2xl p-4 text-xs leading-relaxed text-foreground/90 shadow-lg">
+                                            <div className="flex items-center gap-2 mb-2 text-accent font-bold uppercase tracking-wider text-[10px]">
+                                                <Icons.Sparkles /> Спецпредложение
+                                            </div>
+                                            <div className="mb-3">{m.content}</div>
+                                            <button 
+                                                onClick={() => tg?.openTelegramLink('https://t.me/lingvoaichanel')} 
+                                                className="w-full py-2.5 bg-accent hover:bg-accentLight text-white rounded-xl font-bold text-[11px] active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"
+                                            >
+                                                Подписаться
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {m.content && (
+                                                <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(m.id, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}>?</div>
+                                            )}
+                                            <div className="whitespace-pre-wrap font-medium">{isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}</div>
+                                            {m.role === 'user' && m.correction && (
+                                                <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">Репетитор советует:</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
+                                            )}
+                                            {m.role === 'assistant' && !isAiLoading && m.translation && (
+                                                <div className="mt-2 pt-2 border-t border-borderLight">{!visTrans[m.id] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[m.id]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}</div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        <div ref={scrollRef} />
+                    </main>
+                    <footer className="bottom-panel">
+                        {suggestions.length > 0 && !loading && (<div className="suggestions-ribbon">{suggestions.map((s, i) => (<button key={i} onClick={()=>onSend(s.en)} className="suggestion-pill"><span className="en">{s.en}</span><span className="ru">{s.ru}</span></button>))}</div>)}
+                        <div className="input-bar"><input className="input-field flex-1" placeholder={`Type in ${lang}...`} value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={()=>onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white hover:scale-105 active:scale-95 transition-all"><Icons.Send /></button></div>
+                    </footer>
+                </div>
+            );
+        }
+
+        function LowBalanceModal({ isOpen, onClose, onShopOpen }) {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
+                        <h2 className="text-2xl font-bold mb-4 font-display text-white">Токены закончились</h2>
+                        <p className="text-muted mb-8 leading-relaxed">Для продолжения обучения пополни баланс или пригласи друга и получи <b>+100 токенов</b>.</p>
+                        <div className="space-y-3">
+                            <button onClick={onShopOpen} className="btn-primary">Перейти в магазин</button>
+                            <button onClick={inviteFriend} className="btn-secondary flex items-center justify-center gap-2"><Icons.UserPlus /> Пригласить друга (+100)</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MobileOnlyScreen() {
+            return (
+                <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-10 text-center">
+                    <div className="w-24 h-24 bg-accent/10 rounded-3xl flex items-center justify-center mb-8 animate-bounce"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+                    <h2 className="text-2xl font-bold mb-4 font-display gradient-text text-white">Только для мобильных устройств</h2>
+                    <p className="text-muted leading-relaxed">Извини, но lingvo.ai оптимизирован для работы на смартфонах. Пожалуйста, открой это приложение через мобильную версию Telegram для лучшего опыта обучения. 📱</p>
+                    <div className="mt-10 p-4 border border-border rounded-2xl bg-surface/50 text-xs text-muted">Версия для ПК временно недоступна</div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [token, setToken] = useState(localStorage.getItem('lingvo_token'));
+            const [credits, setCredits] = useState(0);
+            const [step, setStep] = useState('setup');
+            const [character, setCharacter] = useState('');
+            const [situation, setSituation] = useState('');
+            const [selectedLang, setSelectedLang] = useState(localStorage.getItem('lingvo_lang') || 'English');
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [suggestions, setSuggestions] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [analysisLoading, setAnalysisLoading] = useState(null);
+            const [analysisModal, setAnalysisModal] = useState({ isOpen: false, content: '', loading: false, pendingId: null, pendingTxt: null });
+            const [isShopOpen, setIsShopOpen] = useState(false);
+            const [isLowBalanceOpen, setIsLowBalanceOpen] = useState(false);
+            const [isHintOpen, setIsHintOpen] = useState(false);
+
+            useEffect(() => { localStorage.setItem('lingvo_lang', selectedLang); }, [selectedLang]);
+
+            const platform = tg?.platform || 'unknown';
+            const isPC = ['tdesktop', 'web', 'macos'].includes(platform);
+
+            const [rewardAnim, setRewardAnim] = useState(false);
+
+            const authenticate = async () => {
+                if (!tg?.initData) return;
+                try {
+                    const r = await fetch(`${API_BASE}/auth/telegram`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: tg.initData }) });
+                    const data = await r.json();
+                    if (data.access_token) { localStorage.setItem('lingvo_token', data.access_token); setToken(data.access_token); setCredits(data.credits); }
+                } catch (e) { console.error("Auth failed", e); }
+            };
+            const fetchCredits = async () => {
+                if (!token) return;
+                try {
+                    const r = await fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } });
+                    if (r.status === 401) { localStorage.removeItem('lingvo_token'); setToken(null); authenticate(); return; }
+                    const d = await r.json(); 
+                    if (d.credits !== undefined) {
+                        if (d.reward_given) {
+                            setRewardAnim(true);
+                            setTimeout(() => setRewardAnim(false), 4000);
+                        }
+                        setCredits(d.credits);
+                    }
+                } catch(e) {}
+            };
+            useEffect(() => { if (!token) authenticate(); else fetchCredits(); }, [token]);
+
+            const triggerAI = async (hist) => {
+                if (credits < 1) { setIsLowBalanceOpen(true); return; }
+                setLoading(true); setSuggestions([]);
+                const aiMsgId = Date.now() + 1;
+                setMessages(prev => [...prev, { role: 'assistant', content: '', id: aiMsgId }]);
+                
+                try {
+                    const res = await fetch(`${API_BASE}/chat_stream?token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character, situation, lang: selectedLang, history: hist }) });
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullContent = "";
+                    let streamBuffer = ""; 
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        const chunk = value ? decoder.decode(value, { stream: true }) : "";
+                        streamBuffer += chunk;
+                        if (streamBuffer.includes("||ERROR||Credits")) {
+                            setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+                            setLoading(false); setIsLowBalanceOpen(true); break;
+                        }
+                        if (streamBuffer.includes("||META||")) {
+                            const parts = streamBuffer.split("||META||");
+                            fullContent += parts[0];
+                            try {
+                                const meta = JSON.parse(parts[1]);
+                                setMessages(prev => {
+                                    const next = [...prev];
+                                    const aiIdx = next.findIndex(m => m.id === aiMsgId);
+                                    if (aiIdx !== -1) { 
+                                        next[aiIdx].translation = meta.translation; 
+                                        next[aiIdx].content = fullContent; 
+                                        
+                                        // PROMO INJECTION
+                                        if (meta.promo) {
+                                            next.splice(aiIdx, 0, { role: 'promo', content: meta.promo, id: Date.now() + 2 });
+                                        }
+                                    }
+                                    if (meta.user_correction) {
+                                        const lastUserIdx = next.findLastIndex(m => m.role === 'user');
+                                        if (lastUserIdx !== -1) next[lastUserIdx].correction = meta.user_correction;
+                                    }
+                                    return next;
+                                });
+                                setSuggestions(meta.suggestions || []);
+                                
+                                // ONBOARDING TRIGGER: After first response metadata
+                                if (!localStorage.getItem('lingvo_hint_seen') && hist.length === 0) {
+                                    setTimeout(() => setIsHintOpen(true), 500);
+                                }
+
+                            } catch(e) { 
+                                setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
+                            }
+                            setLoading(false); break; 
+                        } else if (done) {
+                            fullContent += streamBuffer;
+                            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
+                            break;
+                        }
+                    }
+                } catch(e) { 
+                    setLoading(false); 
+                    setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "Error", translation: "Check connection" } : m));
+                } finally { fetchCredits(); }
+            };
+
+            const onSend = (txt) => { if (!txt.trim() || loading) return; const next = [...messages, { role: 'user', content: txt, id: Date.now() }]; setMessages(next); setInput(''); triggerAI(next.map(m=>({role:m.role, content:m.content}))); };
+            
+            const onAnalyzeClick = (id, txt) => {
+                setAnalysisModal({ isOpen: true, content: '', loading: false, pendingId: id, pendingTxt: txt });
+            };
+
+            const startAnalysis = async (mode) => {
+                const { pendingId, pendingTxt } = analysisModal;
+                if (credits < 1) { setIsLowBalanceOpen(true); return; }
+                setAnalysisLoading(pendingId); setAnalysisModal(prev => ({ ...prev, loading: true }));
+                try {
+                    const res = await fetch(`${API_BASE}/explain`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ text: pendingTxt, lang: selectedLang, mode }) });
+                    if (res.status === 402) { setAnalysisModal(prev => ({ ...prev, isOpen: false })); setIsLowBalanceOpen(true); return; }
+                    const data = await res.json();
+                    setMessages(prev => prev.map(m => m.id === pendingId ? { ...m, analysis: data.explanation } : m));
+                    setAnalysisModal(prev => ({ ...prev, content: data.explanation, loading: false }));
+                } catch(e) { setAnalysisModal(prev => ({ ...prev, isOpen: false })); }
+                finally { setAnalysisLoading(null); fetchCredits(); }
+            };
+
+            const clearHistory = () => { setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup'); };
+
+            if (isPC) return <MobileOnlyScreen />;
+            if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
+            if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
+            
+            return (
+                <>
+                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} />)}
+                    <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
+                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
+                    <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
+                    <OnboardingModal isOpen={isHintOpen} onClose={() => setIsHintOpen(false)} />
+                </>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
