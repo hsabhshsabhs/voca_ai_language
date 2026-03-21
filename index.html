@@ -571,6 +571,27 @@
                         const { value, done } = await reader.read();
                         const chunk = value ? decoder.decode(value, { stream: true }) : "";
                         streamBuffer += chunk;
+
+                        // 1. Handle early correction marker
+                        if (streamBuffer.includes("||CORRECTION||")) {
+                            const startIdx = streamBuffer.indexOf("||CORRECTION||");
+                            const endIdx = streamBuffer.indexOf("||", startIdx + 14);
+                            if (endIdx !== -1) {
+                                const jsonStr = streamBuffer.substring(startIdx + 14, endIdx);
+                                try {
+                                    const corrData = JSON.parse(jsonStr);
+                                    setMessages(prev => {
+                                        const next = [...prev];
+                                        const lastUserIdx = next.findLastIndex(m => m.role === 'user');
+                                        if (lastUserIdx !== -1) next[lastUserIdx].correction = corrData;
+                                        return next;
+                                    });
+                                } catch(e) { console.error("Corr parse error", e); }
+                                // Strip from buffer so it doesn't show in AI bubble
+                                streamBuffer = streamBuffer.substring(0, startIdx) + streamBuffer.substring(endIdx + 2);
+                            }
+                        }
+
                         if (streamBuffer.includes("||ERROR||Credits")) {
                             setMessages(prev => prev.filter(m => m.id !== aiMsgId));
                             setLoading(false); setIsLowBalanceOpen(true); break;
@@ -592,6 +613,7 @@
                                             next.splice(aiIdx, 0, { role: 'promo', content: meta.promo, id: Date.now() + 2 });
                                         }
                                     }
+                                    // user_correction is now handled early, but we keep the logic for safety
                                     if (meta.user_correction) {
                                         const lastUserIdx = next.findLastIndex(m => m.role === 'user');
                                         if (lastUserIdx !== -1) next[lastUserIdx].correction = meta.user_correction;
@@ -613,6 +635,11 @@
                             fullContent += streamBuffer;
                             setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullContent, translation: "..." } : m));
                             break;
+                        }
+                        
+                        // Update AI bubble with current buffer (excluding any markers handled above)
+                        if (!streamBuffer.includes("||")) {
+                            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: streamBuffer } : m));
                         }
                     }
                 } catch(e) { 
