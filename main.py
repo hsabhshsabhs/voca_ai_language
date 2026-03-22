@@ -32,6 +32,87 @@ DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 MODEL = "deepseek-chat"
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+# --- TRANSLATIONS ---
+TRANSLATIONS = {
+    "en": {
+        "welcome_title": "lingvo ai — Your Interactive Language Trainer 🚀",
+        "welcome_description": "Practice English, German, French, Spanish, Italian, Japanese, Chinese or Korean in AI dialogues. Get instant corrections and learn grammar as you communicate.",
+        "welcome_features": "✅ <b>Any roles, situations and languages.</b>\n✅ <b>Automatic error checking.</b>\n✅ <b>Breakdown with transcription on the \"?\" button.</b>\n✅ <b>Smart reply suggestions.</b>",
+        "welcome_cta": "<b>Press the \"Open\" button and start learning now!</b>",
+        "affiliate_title": "💼 Affiliate Program",
+        "affiliate_description": "Become our ambassador and get double benefits:\n\n🎁 <b>+30 tokens</b> instantly for each invited friend.\n\n💰 <b>20% commission</b> in Telegram Stars from all friend purchases!\n",
+        "affiliate_link": "<b>Your link:</b>\n",
+        "referral_bonus": "🎉 <b>Hooray!</b> Someone signed up via your link! <b>30 tokens</b> credited to you 🎁 and <b>20%</b> from their future purchases.",
+        "promo_subscribe": "Want to stay connected? Subscribe to our Telegram channel. With less than 50 tokens balance, you'll get 15 tokens credited every day!",
+        "low_balance_title": "Low Balance ⚠️",
+        "low_balance_message": "You've run out of tokens. Purchase more to continue learning!",
+        "buy_tokens": "Buy Tokens",
+        "error_general": "Something went wrong. Please try again.",
+    },
+    "es": {
+        "welcome_title": "lingvo ai — Tu Entrenador Interactivo de Idiomas 🚀",
+        "welcome_description": "Practica inglés, alemán, francés, español, italiano, japonés, chino o coreano en diálogos con IA. Obtén correcciones instantáneas y aprende gramática mientras te comunicas.",
+        "welcome_features": "✅ <b>Cualquier rol, situación e idioma.</b>\n✅ <b>Corrección automática de errores.</b>\n✅ <b>Desglose con transcripción en el botón \"?\".</b>\n✅ <b>Sugerencias inteligentes de respuesta.</b>",
+        "welcome_cta": "<b>¡Presiona el botón \"Open\" y comienza a aprender ahora!</b>",
+        "affiliate_title": "💼 Programa de Afiliados",
+        "affiliate_description": "Conviértete en nuestro embajador y obtén beneficios dobles:\n\n🎁 <b>+30 tokens</b> al instante por cada amigo invitado.\n\n💰 <b>20% de comisión</b> en Telegram Stars de todas las compras de tu amigo.\n",
+        "affiliate_link": "<b>Tu enlace:</b>\n",
+        "referral_bonus": "🎉 <b>¡Hurra!</b> ¡Un nuevo usuario se registró con tu enlace! Se acreditaron <b>30 tokens</b> 🎁 y <b>20%</b> de sus futuras compras.",
+        "promo_subscribe": "¿Quieres mantenerte conectado? Suscríbete a nuestro canal de Telegram. ¡Con menos de 50 tokens, recibirás 15 tokens cada día!",
+        "low_balance_title": "Saldo Bajo ⚠️",
+        "low_balance_message": "Te quedaste sin tokens. ¡Compra más para continuar aprendiendo!",
+        "buy_tokens": "Comprar Tokens",
+        "error_general": "Algo salió mal. Por favor, intenta de nuevo.",
+    },
+    "pt": {
+        "welcome_title": "lingvo ai — Seu Treinador Interativo de Idiomas 🚀",
+        "welcome_description": "Pratique inglês, alemão, francês, espanhol, italiano, japonês, chinês ou coreano em diálogos com IA. Obtenha correções instantâneas e aprenda gramática enquanto se comunica.",
+        "welcome_features": "✅ <b>Qualquer papel, situação e idioma.</b>\n✅ <b>Verificação automática de erros.</b>\n✅ <b>Análise com transcrição no botão \"?\".</b>\n✅ <b>Sugestões inteligentes de resposta.</b>",
+        "welcome_cta": "<b>Pressione o botão \"Open\" e comece a aprender agora!</b>",
+        "affiliate_title": "💼 Programa de Afiliados",
+        "affiliate_description": "Torne-se nosso embaixador e получите двойную выгоду:\n\n🎁 <b>+30 tokens</b> instantaneamente para cada amigo convidado.\n\n💰 <b>20% de comissão</b> em Telegram Stars de todas as compras do seu amigo.\n",
+        "affiliate_link": "<b>Seu link:</b>\n",
+        "referral_bonus": "🎉 <b>Eba!</b> Um novo usuário se cadastrou pelo seu link! <b>30 tokens</b> creditados 🎁 e <b>20%</b> das compras futuras dele.",
+        "promo_subscribe": "Quer ficar sempre conectado? Inscreva-se no nosso canal do Telegram. Com menos de 50 tokens, você receberá 15 tokens todos os dias!",
+        "low_balance_title": "Saldo Baixo ⚠️",
+        "low_balance_message": "Você ficou sem tokens. Compre mais para continuar aprendendo!",
+        "buy_tokens": "Comprar Tokens",
+        "error_general": "Algo deu errado. Por favor, tente novamente.",
+    },
+    "ru": {
+        "welcome_title": "lingvo ai — твой интерактивный тренажер иностранных языков 🚀",
+        "welcome_description": "Практикуй английский, немецкий, французский, испанский, итальянский, японский, китайский или корейский в диалогах с AI. Получай мгновенные исправления и учи грамматику прямо в процессе общения.",
+        "welcome_features": "✅ <b>Любые роли, ситуации и языки.</b>\n✅ <b>Автоматическая проверка ошибок.</b>\n✅ <b>Разбор с транскрипцией по кнопке «?».</b>\n✅ <b>Умные варианты ответов</b>.",
+        "welcome_cta": "<b>Нажми кнопку \"Open\" и начни обучение прямо сейчас!</b>",
+        "affiliate_title": "💼 Партнерская программа",
+        "affiliate_description": "Стань нашим амбассадором и получай двойную выгоду:\n\n🎁 <b>+30 токенов</b> сразу за каждого приглашенного друга.\n\n💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга!\n",
+        "affiliate_link": "<b>Твоя ссылка:</b>\n",
+        "referral_bonus": "<b>Ура!</b> 🎉 По твоей ссылке новый пользователь! Тебе начислено <b>30 токенов</b> 🎁 и <b>20%</b> от его будущих покупок.",
+        "promo_subscribe": "Хочешь оставаться всегда на связи? Подпишись на наш Telegram канал. При балансе менее 50 токенов тебе будет начисляться 15 токенов каждый день!",
+        "low_balance_title": "Закончились токены ⚠️",
+        "low_balance_message": "У тебя закончились токены. Купи больше, чтобы продолжить обучение!",
+        "buy_tokens": "Купить токены",
+        "error_general": "Что-то пошло не так. Попробуй ещё раз.",
+    }
+}
+
+def get_user_lang(message):
+    """Get user language code from Telegram message, return 'en' as default."""
+    if not message:
+        return 'en'
+    user = message.get('from', {})
+    lang = user.get('language_code', 'en')
+    # Handle primary language (first 2 chars)
+    primary = lang[:2].lower() if lang else 'en'
+    # Check if we support this language, otherwise fallback to 'en'
+    if primary not in TRANSLATIONS:
+        primary = 'en'
+    return primary
+
+def t(lang, key):
+    """Get translation for key in given language."""
+    return TRANSLATIONS.get(lang, TRANSLATIONS['en']).get(key, TRANSLATIONS['en'].get(key, ''))
+
 # --- DATABASE ---
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./web_app/backend/voca_users.db")
 if DATABASE_URL.startswith("postgres://"):
@@ -306,25 +387,31 @@ async def telegram_webhook(request: Request):
         cb = update["callback_query"]
         if cb.get("data") == "affiliate_info":
             user_id = cb["from"]["id"]
+            user_lang = get_user_lang(cb)
             async with aiohttp.ClientSession() as session:
                 bot_resp = await session.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
                 bot_data = await bot_resp.json()
                 bot_username = bot_data.get("result", {}).get("username", "lingvo_ai_bot")
                 
                 aff_text = (
-                    "<b>💼 Партнерская программа</b>\n\n"
-                    "Стань нашим амбассадором и получай двойную выгоду:\n\n"
-                    "🎁 <b>+30 токенов</b> сразу за каждого приглашенного друга.\n\n"
-                    "💰 <b>20% комиссии</b> в Telegram Stars от всех покупок друга!\n\n"
-                    f"🔗 <b>Твоя ссылка:</b>\n<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
+                    f"<b>{t(user_lang, 'affiliate_title')}</b>\n\n"
+                    f"{t(user_lang, 'affiliate_description')}"
+                    f"{t(user_lang, 'affiliate_link')}<code>https://t.me/{bot_username}?start=ref_{user_id}</code>"
                 )
+                invite_text_map = {
+                    "en": "Invite friends and earn 30 bonus tokens!",
+                    "es": "Invita amigos y gana 30 tokens extra!",
+                    "pt": "Convide amigos e ganhe 30 tokens bonus!",
+                    "ru": "Пригласи друзей и получи 30 бонусных токенов!"
+                }
+                invite_text = invite_text_map.get(user_lang, invite_text_map["en"])
                 url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
                 await session.post(url, json={
                     "chat_id": user_id,
                     "text": aff_text,
                     "parse_mode": "HTML",
                     "reply_markup": {
-                        "inline_keyboard": [[{"text": "🚀 Пригласить друзей", "url": f"https://t.me/share/url?url=https://t.me/{bot_username}?start=ref_{user_id}&text=Практикуй%20английский%20с%20AI%20в%20lingvo.ai!%20По%20моей%20ссылке%20получишь%20+100%20токенов%20на%20старт%20🎁"}]]
+                        "inline_keyboard": [[{"text": "🚀 " + ("Invite Friends" if user_lang == "en" else ("Invitar Amigos" if user_lang == "es" else ("Convidar Amigos" if user_lang == "pt" else "Пригласить друзей"))), "url": f"https://t.me/share/url?url=https://t.me/{bot_username}?start=ref_{user_id}&text={invite_text.replace(' ', '%20')}"}]]
                     }
                 })
         return {"ok": True}
@@ -350,6 +437,8 @@ async def telegram_webhook(request: Request):
     if text.startswith("/start") and chat_id:
         db = SessionLocal()
         user = db.query(User).filter(User.telegram_id == chat_id).first()
+        user_lang = get_user_lang(message)
+        
         if not user:
             user = User(telegram_id=chat_id, username=message["from"].get("username"), first_name=message["from"].get("first_name"), credits=30.0)
             db.add(user); db.commit()
@@ -363,20 +452,32 @@ async def telegram_webhook(request: Request):
                             async with aiohttp.ClientSession() as session:
                                 await session.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
                                     "chat_id": ref_id,
-                                    "text": "<b>Ура!</b> 🎉 По твоей ссылке новый пользователь! Тебе начислено <b>30 токенов</b> 🎁 и <b>20%</b> от его будущих покупок.",
+                                    "text": t(user_lang, 'referral_bonus'),
                                     "parse_mode": "HTML"
                                 })
                 except: pass
         db.close()
 
+        channel_btn_text_map = {
+            "en": "📢 Our Telegram Channel",
+            "es": "📢 Nuestro Canal de Telegram",
+            "pt": "📢 Nosso Canal do Telegram",
+            "ru": "📢 Наш Telegram канал"
+        }
+        affiliate_btn_text_map = {
+            "en": "💼 Affiliate Program",
+            "es": "💼 Programa de Afiliados",
+            "pt": "💼 Programa de Afiliados",
+            "ru": "💼 Партнерская программа"
+        }
+        channel_btn = channel_btn_text_map.get(user_lang, channel_btn_text_map["en"])
+        affiliate_btn = affiliate_btn_text_map.get(user_lang, affiliate_btn_text_map["en"])
+
         welcome_text = (
-            "<b>lingvo ai — твой интерактивный тренажер иностранных языков</b> 🚀\n\n"
-            "Практикуй <b>английский, немецкий, французский, испанский, итальянский, японский, китайский или корейский</b> в диалогах с AI. Получай мгновенные исправления и учи грамматику прямо в процессе общения.\n\n"
-            "✅ <b>Любые роли, ситуации и языки.</b>\n"
-            "✅ <b>Автоматическая проверка ошибок.</b>\n"
-            "✅ <b>Разбор с транскрипцией по кнопке «?».</b>\n"
-            "✅ <b>Умные варианты ответов</b>.\n\n"
-            "<b>Нажми кнопку \"Open\" и начни обучение прямо сейчас!</b>"
+            f"<b>{t(user_lang, 'welcome_title')}</b>\n\n"
+            f"{t(user_lang, 'welcome_description')}\n\n"
+            f"{t(user_lang, 'welcome_features')}\n\n"
+            f"{t(user_lang, 'welcome_cta')}"
         )
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendAnimation"
         async with aiohttp.ClientSession() as session:
@@ -388,8 +489,8 @@ async def telegram_webhook(request: Request):
                 "disable_web_page_preview": False,
                 "reply_markup": {
                     "inline_keyboard": [
-                        [{"text": "📢 Наш Telegram канал", "url": "https://t.me/lingvoaichanel"}],
-                        [{"text": "💼 Партнерская программа", "callback_data": "affiliate_info"}]
+                        [{"text": channel_btn, "url": "https://t.me/lingvoaichanel"}],
+                        [{"text": affiliate_btn, "callback_data": "affiliate_info"}]
                     ]
                 }
             })
@@ -400,6 +501,13 @@ async def telegram_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
+
+
+
+
+
+
 
 
 
