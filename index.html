@@ -194,7 +194,7 @@
         const inviteFriend = () => {
             const userId = tg?.initDataUnsafe?.user?.id;
             if (!userId) return;
-            const uiLang = localStorage.getItem('lingvo_ui_lang') || 'en';
+            const uiLang = localStorage.getItem('lingvo_ui_lang') || 'ru';
             const shareTexts = {
                 en: "Practice English with AI on lingvo.ai! Get +30 tokens on start via my link 🎁",
                 es: "¡Practica inglés con AI en lingvo.ai! Obtén +30 tokens al inicio con mi enlace 🎁",
@@ -352,26 +352,26 @@
                 stars_shop: "Магазин Stars",
                 tokens: "токенов",
                 affiliate_program: "Партнерская программа",
-                affiliate_desc: "{tr(uiLang, 'affiliate_desc')}",
+                affiliate_desc: "Получи <b>+30 токенов</b> сразу и <b>20% вознаграждения</b> в Stars от всех покупок друзей!",
                 become_partner: "Стать партнером",
                 how_to_use: "Как пользоваться?",
-                hint_explain: "{tr(uiLang, 'hint_explain')}",
-                hint_gem: "{tr(uiLang, 'hint_gem')}",
+                hint_explain: "Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики, перевода и транскрипции.",
+                hint_gem: "Нажми на бриллиант чтобы <b>пополнить баланс</b> или пригласи друга (+30 токенов).",
                 got_it: "Понятно!",
                 dont_show_again: "Не показывать больше",
                 choose_any_lang: "Выбирай любой язык!",
-                lang_hint_text: "{tr(uiLang, 'lang_hint_text')}",
+                lang_hint_text: "Вы можете изменить язык обучения в левом верхнем углу. Доступны: English, German, French, Spanish, Italian, Japanese, Chinese и Korean!",
                 dont_show_again_lang: "Больше не показывать",
                 special_offer: "Спецпредложение",
                 subscribe: "Подписаться",
                 tutor_advises: "Репетитор советует:",
                 translation: "Перевод",
                 tokens_empty: "Токены закончились",
-                to_continue: "{tr(uiLang, 'to_continue')}",
+                to_continue: "Чтобы продолжить обучение, пополните баланс или пригласите друга и получите <b>+30 токенов</b>.",
                 go_to_shop: "Перейти в магазин",
-                invite_friend: "{tr(uiLang, 'invite_friend')}",
+                invite_friend: "Пригласить друга (+30)",
                 mobile_only: "Только для мобильных устройств",
-                mobile_only_desc: "{tr(uiLang, 'mobile_only_desc')}",
+                mobile_only_desc: "Извини, но lingvo.ai оптимизирован для работы на смартфонах. Пожалуйста, открой это приложение через мобильную версию Telegram для лучшего опыта обучения. 📱",
                 pc_version_unavailable: "Версия для ПК временно недоступна",
                 type_in_lang: "Пиши на",
                 back: "Назад",
@@ -700,7 +700,7 @@ function SetupScreen({ onStart, character, setCharacter, situation, setSituation
             const [character, setCharacter] = useState('');
             const [situation, setSituation] = useState('');
             const [selectedLang, setSelectedLang] = useState(localStorage.getItem('lingvo_lang') || 'English');
-            const [uiLang, setUiLang] = useState(localStorage.getItem('lingvo_ui_lang') || 'en');
+            const [uiLang, setUiLang] = useState(localStorage.getItem('lingvo_ui_lang') || 'ru');
             const [messages, setMessages] = useState([]);
             const [input, setInput] = useState('');
             const [suggestions, setSuggestions] = useState([]);
