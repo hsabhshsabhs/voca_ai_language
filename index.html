@@ -199,65 +199,10 @@
             tg.openTelegramLink(url);
         };
 
-                function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim, selectedLang, setSelectedLang }) {
+        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim, selectedLang, setSelectedLang }) {
             const [displayCredits, setDisplayCredits] = useState(credits);
             const [isPulsing, setIsPulsing] = useState(false);
-            
-            // User and AI language selection
-            const [userLang, setUserLang] = useState('Russian');
-            const [aiLang, setAiLang] = useState(selectedLang || 'English');
-            const [isUserLangOpen, setIsUserLangOpen] = useState(false);
-            const [isAiLangOpen, setIsAiLangOpen] = useState(false);
-
-            // When user changes language, ensure AI language is different
-            const handleUserLangChange = (lang) => {
-                setUserLang(lang);
-                if (aiLang === lang) {
-                    const others = aiLanguages.filter(l => l.id !== lang);
-                    setAiLang(others[0]?.id || 'English');
-                }
-            };
-
-            const userLanguages = [
-                { id: 'Russian', label: 'Русский', flag: '🇷🇺' },
-                { id: 'English', label: 'English', flag: '🇬🇧' },
-                { id: 'Spanish', label: 'Español', flag: '🇪🇸' },
-                { id: 'Portuguese', label: 'Português', flag: '🇧🇷' },
-                { id: 'German', label: 'Deutsch', flag: '🇩🇪' },
-                { id: 'French', label: 'Français', flag: '🇫🇷' },
-                { id: 'Italian', label: 'Italiano', flag: '🇮🇹' },
-                { id: 'Japanese', label: '日本語', flag: '🇯🇵' },
-                { id: 'Chinese', label: '中文', flag: '🇨🇳' },
-                { id: 'Korean', label: '한국어', flag: '🇰🇷' },
-                { id: 'Dutch', label: 'Nederlands', flag: '🇳🇱' },
-                { id: 'Polish', label: 'Polski', flag: '🇵🇱' },
-                { id: 'Turkish', label: 'Türkçe', flag: '🇹🇷' },
-                { id: 'Arabic', label: 'العربية', flag: '🇸🇦' },
-                { id: 'Hindi', label: 'हिन्दी', flag: '🇮🇳' },
-                { id: 'Indonesian', label: 'Bahasa', flag: '🇮🇩' },
-            ];
-
-            const aiLanguages = [
-                { id: 'English', label: 'English', flag: '🇬🇧' },
-                { id: 'Spanish', label: 'Español', flag: '🇪🇸' },
-                { id: 'Portuguese', label: 'Português', flag: '🇧🇷' },
-                { id: 'Russian', label: 'Русский', flag: '🇷🇺' },
-                { id: 'German', label: 'Deutsch', flag: '🇩🇪' },
-                { id: 'French', label: 'Français', flag: '🇫🇷' },
-                { id: 'Italian', label: 'Italiano', flag: '🇮🇹' },
-                { id: 'Japanese', label: '日本語', flag: '🇯🇵' },
-                { id: 'Chinese', label: '中文', flag: '🇨🇳' },
-                { id: 'Korean', label: '한국어', flag: '🇰🇷' },
-                { id: 'Arabic', label: 'العربية', flag: '🇸🇦' },
-                { id: 'Hindi', label: 'हिन्दी', flag: '🇮🇳' },
-                { id: 'Dutch', label: 'Nederlands', flag: '🇳🇱' },
-                { id: 'Polish', label: 'Polski', flag: '🇵🇱' },
-                { id: 'Turkish', label: 'Türkçe', flag: '🇹🇷' },
-                { id: 'Ukrainian', label: 'Українська', flag: '🇺🇦' },
-            ];
-
-            const currentUserLang = userLanguages.find(l => l.id === userLang) || userLanguages[0];
-            const currentAiLang = aiLanguages.find(l => l.id === aiLang) || aiLanguages[0];
+            const [isLangOpen, setIsLangOpen] = useState(false);
 
             useEffect(() => {
                 if (rewardAnim) {
@@ -281,25 +226,45 @@
                 }
             }, [credits, rewardAnim]);
 
-            // When AI lang changes, update selectedLang for API calls
-            useEffect(() => {
-                setSelectedLang(aiLang);
-            }, [aiLang]);
+            const languages = [
+                { id: 'English', label: 'English', flag: '🇬🇧' },
+                { id: 'German', label: 'Deutsch', flag: '🇩🇪' },
+                { id: 'French', label: 'Français', flag: '🇫🇷' },
+                { id: 'Spanish', label: 'Español', flag: '🇪🇸' },
+                { id: 'Italian', label: 'Italiano', flag: '🇮🇹' },
+                { id: 'Japanese', label: '日本語', flag: '🇯🇵' },
+                { id: 'Chinese', label: '中文', flag: '🇨🇳' },
+                { id: 'Korean', label: '한국어', flag: '🇰🇷' },
+            ];
+
+            const currentLang = languages.find(l => l.id === selectedLang) || languages[0];
 
             const presets = [
-                { char: "Barista", sit: "Ordering coffee", label: "☕ Barista", labelSit: "Coffee shop" },
-                { char: "Doctor", sit: "Doctor appointment", label: "👨‍⚕️ Doctor", labelSit: "Medical visit" },
-                { char: "Guide", sit: "City tour", label: "🗺️ Tour Guide", labelSit: "City tour" },
-                { char: "Shop Assistant", sit: "Buying clothes", label: "👔 Shop Asst", labelSit: "Clothing store" },
-                { char: "Hotel Receptionist", sit: "Hotel check-in", label: "🏨 Reception", labelSit: "Check-in" },
-                { char: "Taxi Driver", sit: "Airport transfer", label: "🚕 Taxi", labelSit: "Airport ride" },
+                { char: "Бариста", sit: "Заказ кофе", label: "Бариста", labelSit: "Заказ кофе" },
+                { char: "Доктор", sit: "Прием у врача", label: "Врач", labelSit: "Прием у врача" },
+                { char: "Гид", sit: "Экскурсия", label: "Гид", labelSit: "Экскурсия" },
+                { char: "Продавец", sit: "Покупка одежды", label: "Продавец", labelSit: "Покупка одежды" },
             ];
             const isAnyPresetActive = presets.some(p => character === p.char && situation === p.sit);
-
             return (
-                <div className="app-layout p-4" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-6">
+                <div className="app-layout p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
+                    <div className="flex justify-between items-center mb-8">
+                        <div className="relative">
+                            <div onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center gap-2 bg-surface border border-border px-2 py-1.5 rounded-lg cursor-pointer hover:bg-surfaceHover transition-all">
+                                <span className="text-xl">{currentLang.flag}</span>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isLangOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            {isLangOpen && (
+                                <div className="absolute top-full left-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl z-[100] w-40 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                    {languages.map(l => (
+                                        <div key={l.id} onClick={() => { setSelectedLang(l.id); setIsLangOpen(false); }} className={`p-2.5 flex items-center gap-3 hover:bg-accent/10 cursor-pointer transition-colors ${selectedLang === l.id ? 'bg-accent/20 text-white' : 'text-muted'}`}>
+                                            <span className="text-xl">{l.flag}</span>
+                                            <span className="font-bold text-xs">{l.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <h1 className="text-xl font-display font-bold gradient-text">lingvo.ai</h1>
                         <div className="relative">
                             <div onClick={onShopOpen} className={`credits-badge ${isPulsing ? 'pulse' : ''}`}>
@@ -308,82 +273,29 @@
                             {rewardAnim && isPulsing && <div className="reward-popup">+15</div>}
                         </div>
                     </div>
-
-                    {/* Language Selectors - Horizontal Row */}
-                    <div className="flex items-center justify-center gap-4 mb-6">
-                        {/* User Language Selector */}
-                        <div className="relative">
-                            <div onClick={() => { setIsUserLangOpen(!isUserLangOpen); setIsAiLangOpen(false); }} className="flex flex-col items-center gap-1 bg-surface border border-border px-4 py-3 rounded-2xl cursor-pointer hover:bg-surfaceHover transition-all min-w-[100px]">
-                                <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center text-lg">👤</div>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-lg">{currentUserLang.flag}</span>
-                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isUserLangOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-                                </div>
-                            </div>
-                            {isUserLangOpen && (
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-surface border border-border rounded-xl shadow-2xl z-[100] w-44 max-h-64 overflow-y-auto">
-                                    {userLanguages.map(l => (
-                                        <div key={l.id} onClick={() => { handleUserLangChange(l.id); setIsUserLangOpen(false); }} className={`p-2.5 flex items-center gap-3 hover:bg-accent/10 cursor-pointer transition-colors ${userLang === l.id ? 'bg-accent/20 text-white' : 'text-muted'}`}>
-                                            <span className="text-xl">{l.flag}</span>
-                                            <span className="font-bold text-xs">{l.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Arrow between selectors */}
-                        <div className="text-muted text-2xl">→</div>
-
-                        {/* AI Language Selector */}
-                        <div className="relative">
-                            <div onClick={() => { setIsAiLangOpen(!isAiLangOpen); setIsUserLangOpen(false); }} className="flex flex-col items-center gap-1 bg-surface border border-border px-4 py-3 rounded-2xl cursor-pointer hover:bg-surfaceHover transition-all min-w-[100px]">
-                                <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center text-lg">🤖</div>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-lg">{currentAiLang.flag}</span>
-                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isAiLangOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-                                </div>
-                            </div>
-                            {isAiLangOpen && (
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-surface border border-border rounded-xl shadow-2xl z-[100] w-44 max-h-64 overflow-y-auto">
-                                    {aiLanguages.map(l => (
-                                        <div key={l.id} onClick={() => { setAiLang(l.id); setIsAiLangOpen(false); }} className={`p-2.5 flex items-center gap-3 hover:bg-accent/10 cursor-pointer transition-colors ${aiLang === l.id ? 'bg-accent/20 text-white' : 'text-muted'}`}>
-                                            <span className="text-xl">{l.flag}</span>
-                                            <span className="font-bold text-xs">{l.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Main Content */}
                     <div className="flex flex-col h-full">
-                        {/* Quick Start - Horizontal Scroll */}
                         <div className="bg-surface/50 p-4 rounded-xl border border-border mb-6">
-                            <h2 className="font-semibold mb-3 flex items-center gap-2 text-accent text-sm"><Icons.Sparkles /> Выбери собеседника</h2>
-                            <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
+                            <div className="grid grid-cols-2 gap-3 mt-4">
                                 {presets.map((p, i) => (
-                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card shrink-0 !w-36 ${character===p.char && situation===p.sit ? 'active' : ''}`}>
+                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
                                         <div className="font-semibold text-sm">{p.label}</div>
                                         <div className="text-[10px] text-muted tracking-tight">{p.labelSit}</div>
                                     </button>
                                 ))}
                             </div>
                         </div>
-
                         <div className="space-y-4">
                             <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
                             <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
                         </div>
                         <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg mt-8">Начать диалог</button>
                     </div>
-
                 </div>
             );
         }
 
-function AnalysisModal({ isOpen, onClose, content, loading, onModeSelect }) {
+        function AnalysisModal({ isOpen, onClose, content, loading, onModeSelect }) {
             const [remember, setRemember] = useState(false);
             if (!isOpen) return null;
             return (
@@ -455,29 +367,6 @@ function AnalysisModal({ isOpen, onClose, content, loading, onModeSelect }) {
                                 <Icons.UserPlus /> Стать партнером
                             </button>
                         </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function OnboardingModal({ isOpen, onClose }) {
-            if (!isOpen) return null;
-            return (
-                <div className="modal-overlay">
-                    <div className="modal-content text-center">
-                        <h2 className="text-xl font-bold mb-6 gradient-text font-display">Как пользоваться?</h2>
-                        <div className="space-y-6 text-sm text-left mb-8">
-                            <div className="flex items-start gap-4">
-                                <div className="explain-btn !static !m-0 !shrink-0 flex-none">?</div>
-                                <p className="leading-relaxed">Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики, перевода и транскрипции.</p>
-                            </div>
-                            <div className="flex items-start gap-4">
-                                <div className="credits-badge !static !m-0 !shrink-0 flex-none"><Icons.Gem /></div>
-                                <p className="leading-relaxed">Нажми на бриллиант, чтобы <b>пополнить баланс</b> или пригласить друга (+30 токенов).</p>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className="btn-primary">Понятно!</button>
-                        <button onClick={() => { localStorage.setItem('lingvo_hint_seen', 'true'); onClose(); }} className="text-xs text-muted mt-6 block w-full hover:text-white transition-all">Не показывать больше</button>
                     </div>
                 </div>
             );
@@ -625,7 +514,14 @@ function AnalysisModal({ isOpen, onClose, content, loading, onModeSelect }) {
             const [isShopOpen, setIsShopOpen] = useState(false);
             const [isLowBalanceOpen, setIsLowBalanceOpen] = useState(false);
             const [isHintOpen, setIsHintOpen] = useState(false);
+            const [isLangHintOpen, setIsLangHintOpen] = useState(false);
             const [activeExplainMode, setActiveExplainMode] = useState(null);
+
+            useEffect(() => {
+                if (!localStorage.getItem('lingvo_lang_hint_seen')) {
+                    setTimeout(() => setIsLangHintOpen(true), 1500);
+                }
+            }, []);
 
             useEffect(() => { localStorage.setItem('lingvo_lang', selectedLang); }, [selectedLang]);
 
@@ -758,7 +654,8 @@ function AnalysisModal({ isOpen, onClose, content, loading, onModeSelect }) {
                     {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
                     <OnboardingModal isOpen={isHintOpen} onClose={() => setIsHintOpen(false)} />
-</>
+                    <LanguageHintModal isOpen={isLangHintOpen} onClose={() => setIsLangHintOpen(false)} />
+                </>
             );
         }
         const root = ReactDOM.createRoot(document.getElementById('root'));
