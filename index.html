@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0a0a0f">
-    <title>lingvo.ai — Твой AI репетитор</title>
+    <title>lingvo.ai — AI Language Trainer</title>
     <!-- Telegram Web App Script -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -194,12 +194,196 @@
         const inviteFriend = () => {
             const userId = tg?.initDataUnsafe?.user?.id;
             if (!userId) return;
-            const text = encodeURIComponent("Практикуй английский с AI в lingvo.ai! По моей ссылке получишь +30 токенов на старт 🎁");
+            const uiLang = localStorage.getItem('lingvo_ui_lang') || 'en';
+            const shareTexts = {
+                en: "Practice English with AI on lingvo.ai! Get +30 tokens on start via my link 🎁",
+                es: "¡Practica inglés con AI en lingvo.ai! Obtén +30 tokens al inicio con mi enlace 🎁",
+                pt: "Pratique inglês com AI no lingvo.ai! Ganhe +30 tokens no início pelo meu link 🎁",
+                ru: "Практикуй английский с AI в lingvo.ai! По моей ссылке получишь +30 токенов на старт 🎁"
+            };
+            const text = encodeURIComponent(shareTexts[uiLang] || shareTexts['en']);
             const url = `https://t.me/share/url?url=https://t.me/${BOT_USERNAME}?start=ref_${userId}&text=${text}`;
             tg.openTelegramLink(url);
         };
 
-        function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim, selectedLang, setSelectedLang }) {
+        
+        // --- UI TRANSLATIONS ---
+        const UI_TRANSLATIONS = {
+            en: {
+                quick_start: "Quick Start",
+                role_label: "Conversation Role",
+                situation_label: "Situation",
+                role_placeholder: "e.g. Elon Musk",
+                situation_placeholder: "e.g. Meeting on Mars",
+                start_dialog: "Start Dialog",
+                analyzing: "Analyzing...",
+                phrase_analysis: "Phrase Analysis",
+                choose_style: "Choose explanation style:",
+                best_friend: "Best Friend",
+                simple_clear: "Simple and clear.",
+                tutor: "Tutor",
+                academic_analysis: "Academic breakdown.",
+                stars_shop: "Stars Shop",
+                tokens: "tokens",
+                affiliate_program: "Affiliate Program",
+                affiliate_desc: "Get <b>+30 tokens</b> instantly and <b>20% rewards</b> in Stars from all friend purchases!",
+                become_partner: "Become a Partner",
+                how_to_use: "How to Use?",
+                hint_explain: "Tap this icon next to any phrase for <b>complete analysis</b> of grammar, translation and transcription.",
+                hint_gem: "Tap the gem to <b>top up your balance</b> or invite a friend (+30 tokens).",
+                got_it: "Got it!",
+                dont_show_again: "Don't show again",
+                choose_any_lang: "Choose Any Language!",
+                lang_hint_text: "You can change the learning language in the top left corner. Available: English, German, French, Spanish, Italian, Japanese, Chinese and Korean!",
+                dont_show_again_lang: "Don't show again",
+                special_offer: "Special Offer",
+                subscribe: "Subscribe",
+                tutor_advises: "Tutor advises:",
+                translation: "Translation",
+                tokens_empty: "Tokens Ran Out",
+                to_continue: "To continue learning, top up your balance or invite a friend and get <b>+30 tokens</b>.",
+                go_to_shop: "Go to Shop",
+                invite_friend: "Invite Friend (+30)",
+                mobile_only: "Mobile Devices Only",
+                mobile_only_desc: "Sorry, but lingvo.ai is optimized for smartphones. Please open this app via the mobile Telegram version for the best learning experience. 📱",
+                pc_version_unavailable: "Desktop version temporarily unavailable",
+                type_in_lang: "Type in",
+                back: "Back",
+                send: "Send",
+            },
+            es: {
+                quick_start: "Inicio Rápido",
+                role_label: "Rol del Interlocutor",
+                situation_label: "Situación",
+                role_placeholder: "ej. Elon Musk",
+                situation_placeholder: "ej. Reunión en Marte",
+                start_dialog: "Iniciar Diálogo",
+                analyzing: "Analizando...",
+                phrase_analysis: "Análisis de Frase",
+                choose_style: "Elige estilo de explicación:",
+                best_friend: "Mejor Amigo",
+                simple_clear: "Simple y claro.",
+                tutor: "Tutor",
+                academic_analysis: "Análisis académico.",
+                stars_shop: "Tienda de Stars",
+                tokens: "tokens",
+                affiliate_program: "Programa de Afiliados",
+                affiliate_desc: "¡Obtén <b>+30 tokens</b> al instante y <b>20% de recompensas</b> en Stars de todas las compras de amigos!",
+                become_partner: "Ser Afiliado",
+                how_to_use: "¿Cómo Usar?",
+                hint_explain: "Toca este icono junto a cualquier frase para un <b>análisis completo</b> de gramática, traducción y transcripción.",
+                hint_gem: "Toca el gem para <b>recargar tu saldo</b> o invitar a un amigo (+30 tokens).",
+                got_it: "¡Entendido!",
+                dont_show_again: "No mostrar más",
+                choose_any_lang: "¡Elige Cualquier Idioma!",
+                lang_hint_text: "Puedes cambiar el idioma de aprendizaje en la esquina superior izquierda. Disponibles: Inglés, Alemán, Francés, Español, Italiano, Japonés, Chino y Coreano!",
+                dont_show_again_lang: "No mostrar más",
+                special_offer: "Oferta Especial",
+                subscribe: "Suscribirse",
+                tutor_advises: "El tutor aconseja:",
+                translation: "Traducción",
+                tokens_empty: "Tokens Agotados",
+                to_continue: "Para continuar aprendiendo, recarga tu saldo o invita a un amigo y obtén <b>+30 tokens</b>.",
+                go_to_shop: "Ir a la Tienda",
+                invite_friend: "Invitar Amigo (+30)",
+                mobile_only: "Solo Dispositivos Móviles",
+                mobile_only_desc: "Lo sentimos, pero lingvo.ai está optimizado para smartphones. Por favor, abre esta app a través de Telegram móvil para la mejor experiencia de aprendizaje. 📱",
+                pc_version_unavailable: "Versión de escritorio temporalmente no disponible",
+                type_in_lang: "Escribe en",
+                back: "Atrás",
+                send: "Enviar",
+            },
+            pt: {
+                quick_start: "Início Rápido",
+                role_label: "Papel do Interlocutor",
+                situation_label: "Situação",
+                role_placeholder: "ex. Elon Musk",
+                situation_placeholder: "ex. Reunião em Marte",
+                start_dialog: "Iniciar Diálogo",
+                analyzing: "Analisando...",
+                phrase_analysis: "Análise de Frase",
+                choose_style: "Escolha o estilo de explicação:",
+                best_friend: "Melhor Amigo",
+                simple_clear: "Simples e claro.",
+                tutor: "Tutor",
+                academic_analysis: "Análise acadêmica.",
+                stars_shop: "Loja de Stars",
+                tokens: "tokens",
+                affiliate_program: "Programa de Afiliados",
+                affiliate_desc: "Ganhe <b>+30 tokens</b> instantaneamente e <b>20% de recompensas</b> em Stars de todas as compras de amigos!",
+                become_partner: "Ser Afiliado",
+                how_to_use: "Como Usar?",
+                hint_explain: "Toque neste ícone ao lado de qualquer frase para uma <b>análise completa</b> de gramática, tradução e transcrição.",
+                hint_gem: "Toque no gem para <b>recargar seu saldo</b> ou convidar um amigo (+30 tokens).",
+                got_it: "Entendi!",
+                dont_show_again: "Não mostrar mais",
+                choose_any_lang: "Escolha Qualquer Idioma!",
+                lang_hint_text: "Você pode mudar o idioma de aprendizado no canto superior esquerdo. Disponíveis: Inglês, Alemão, Francês, Espanhol, Italiano, Japonês, Chinês e Coreano!",
+                dont_show_again_lang: "Não mostrar mais",
+                special_offer: "Oferta Especial",
+                subscribe: "Inscrever-se",
+                tutor_advises: "O tutor recomenda:",
+                translation: "Tradução",
+                tokens_empty: "Tokens Esgotados",
+                to_continue: "Para continuar aprendendo, recarregue seu saldo ou convide um amigo e ganhe <b>+30 tokens</b>.",
+                go_to_shop: "Ir para a Loja",
+                invite_friend: "Convidar Amigo (+30)",
+                mobile_only: "Apenas Dispositivos Móveis",
+                mobile_only_desc: "Desculpe, mas lingvo.ai é otimizado para smartphones. Por favor, abra este app através do Telegram móvel para a melhor experiência de aprendizado. 📱",
+                pc_version_unavailable: "Versão para desktop temporariamente indisponível",
+                type_in_lang: "Digite em",
+                back: "Voltar",
+                send: "Enviar",
+            },
+            ru: {
+                quick_start: "Быстрый старт",
+                role_label: "Роль собеседника",
+                situation_label: "Ситуация",
+                role_placeholder: "Например: Илон Маск",
+                situation_placeholder: "Например: Встреча на Марсе",
+                start_dialog: "Начать диалог",
+                analyzing: "Анализирую...",
+                phrase_analysis: "Разбор фразы",
+                choose_style: "Выбери стиль объяснения:",
+                best_friend: "Лучший друг",
+                simple_clear: "Просто и доходчиво.",
+                tutor: "Репетитор",
+                academic_analysis: "Академический разбор.",
+                stars_shop: "Магазин Stars",
+                tokens: "токенов",
+                affiliate_program: "Партнерская программа",
+                affiliate_desc: "{tr(uiLang, 'affiliate_desc')}",
+                become_partner: "Стать партнером",
+                how_to_use: "Как пользоваться?",
+                hint_explain: "{tr(uiLang, 'hint_explain')}",
+                hint_gem: "{tr(uiLang, 'hint_gem')}",
+                got_it: "Понятно!",
+                dont_show_again: "Не показывать больше",
+                choose_any_lang: "Выбирай любой язык!",
+                lang_hint_text: "{tr(uiLang, 'lang_hint_text')}",
+                dont_show_again_lang: "Больше не показывать",
+                special_offer: "Спецпредложение",
+                subscribe: "Подписаться",
+                tutor_advises: "Репетитор советует:",
+                translation: "Перевод",
+                tokens_empty: "Токены закончились",
+                to_continue: "{tr(uiLang, 'to_continue')}",
+                go_to_shop: "Перейти в магазин",
+                invite_friend: "{tr(uiLang, 'invite_friend')}",
+                mobile_only: "Только для мобильных устройств",
+                mobile_only_desc: "{tr(uiLang, 'mobile_only_desc')}",
+                pc_version_unavailable: "Версия для ПК временно недоступна",
+                type_in_lang: "Пиши на",
+                back: "Назад",
+                send: "Отправить",
+            }
+        };
+
+        function tr(uiLang, key) {
+            return UI_TRANSLATIONS[uiLang]?.[key] || UI_TRANSLATIONS['en'][key] || key;
+        }
+
+function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim, selectedLang, setSelectedLang, uiLang }) {
             const [displayCredits, setDisplayCredits] = useState(credits);
             const [isPulsing, setIsPulsing] = useState(false);
             const [isLangOpen, setIsLangOpen] = useState(false);
@@ -240,10 +424,10 @@
             const currentLang = languages.find(l => l.id === selectedLang) || languages[0];
 
             const presets = [
-                { char: "Бариста", sit: "Заказ кофе", label: "Бариста", labelSit: "Заказ кофе" },
-                { char: "Доктор", sit: "Прием у врача", label: "Врач", labelSit: "Прием у врача" },
-                { char: "Гид", sit: "Экскурсия", label: "Гид", labelSit: "Экскурсия" },
-                { char: "Продавец", sit: "Покупка одежды", label: "Продавец", labelSit: "Покупка одежды" },
+                { char: "Barista", sit: "Ordering coffee", label: "Barista", labelSit: "Ordering coffee" },
+                { char: "Doctor", sit: "Doctor's appointment", label: "Doctor", labelSit: "Doctor's appointment" },
+                { char: "Tour Guide", sit: "City tour", label: "Tour Guide", labelSit: "City tour" },
+                { char: "Shop Assistant", sit: "Buying clothes", label: "Shop Assistant", labelSit: "Buying clothes" },
             ];
             const isAnyPresetActive = presets.some(p => character === p.char && situation === p.sit);
             return (
@@ -266,6 +450,17 @@
                             )}
                         </div>
                         <h1 className="text-xl font-display font-bold gradient-text">lingvo.ai</h1>
+                        <div className="flex items-center gap-2">
+                            <div onClick={() => {
+                                const langs = ['en', 'es', 'pt', 'ru'];
+                                const currentIdx = langs.indexOf(uiLang);
+                                const nextIdx = (currentIdx + 1) % langs.length;
+                                setUiLang(langs[nextIdx]);
+                            }} className="flex items-center gap-1 px-2 py-1 bg-surface border border-border rounded-lg cursor-pointer hover:bg-surfaceHover transition-all text-xs font-bold text-muted">
+                                <span>🌐</span>
+                                <span className="uppercase">{uiLang}</span>
+                            </div>
+                        </div>
                         <div className="relative">
                             <div onClick={onShopOpen} className={`credits-badge ${isPulsing ? 'pulse' : ''}`}>
                                 <Icons.Gem /><span>{displayCredits}</span>
@@ -275,7 +470,7 @@
                     </div>
                     <div className="flex flex-col h-full">
                         <div className="bg-surface/50 p-4 rounded-xl border border-border mb-6">
-                            <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
+                            <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> {tr(uiLang, 'quick_start')}</h2>
                             <div className="grid grid-cols-2 gap-3 mt-4">
                                 {presets.map((p, i) => (
                                     <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
@@ -286,10 +481,10 @@
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Роль собеседника</label><input className="input-field w-full" placeholder="Например: Илон Маск" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
-                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">Ситуация</label><input className="input-field w-full" placeholder="Например: Встреча на Марсе" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">{tr(uiLang, 'role_label')}</label><input className="input-field w-full" placeholder="{tr(uiLang, 'role_placeholder')}" value={character} onChange={e=>setCharacter(e.target.value)} /></div>
+                            <div><label className="text-xs uppercase text-muted mb-2 block font-bold tracking-widest">{tr(uiLang, 'situation_label')}</label><input className="input-field w-full" placeholder="{tr(uiLang, 'situation_placeholder')}" value={situation} onChange={e=>setSituation(e.target.value)} /></div>
                         </div>
-                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg mt-8">Начать диалог</button>
+                        <button onClick={onStart} disabled={!character||!situation} className="btn-primary btn-start w-full py-4 text-lg mt-8">{tr(uiLang, 'start_dialog')}</button>
                     </div>
                 </div>
             );
@@ -301,21 +496,21 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="analysis-modal !max-w-[340px]" onClick={e=>e.stopPropagation()}>
-                        <div className="analysis-modal-header !py-3"><h2 className="font-bold gradient-text text-sm">{loading ? "Анализирую..." : "Разбор фразы"}</h2><button onClick={onClose} className="p-1 hover:bg-surfaceHover rounded-full"><Icons.X /></button></div>
+                        <div className="analysis-modal-header !py-3"><h2 className="font-bold gradient-text text-sm">{loading ? "{tr(uiLang, 'analyzing')}" : "{tr(uiLang, 'phrase_analysis')}"}</h2><button onClick={onClose} className="p-1 hover:bg-surfaceHover rounded-full"><Icons.X /></button></div>
                         <div className="analysis-modal-content !p-4">
                             {loading ? (
                                 <div className="py-6 text-center"><div className="waiting-animation !mb-3"><div></div><div></div><div></div></div><p className="text-muted text-[10px] italic font-medium px-4">Готовлю подробный ответ...</p></div>
                             ) : !content ? (
                                 <div>
-                                    <p className="text-center text-xs font-bold mb-4 text-white">Выбери стиль объяснения:</p>
+                                    <p className="text-center text-xs font-bold mb-4 text-white">{tr(uiLang, 'choose_style')}</p>
                                     <div className="grid gap-2">
                                         <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
-                                            <div className="font-bold text-white text-sm mb-0.5">Лучший друг</div>
-                                            <div className="text-[10px] text-muted leading-tight">Просто и доходчиво.</div>
+                                            <div className="font-bold text-white text-sm mb-0.5">{tr(uiLang, 'best_friend')}</div>
+                                            <div className="text-[10px] text-muted leading-tight">{tr(uiLang, 'simple_clear')}</div>
                                         </button>
                                         <button onClick={() => onModeSelect('academic', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
-                                            <div className="font-bold text-white text-sm mb-0.5">Репетитор</div>
-                                            <div className="text-[10px] text-muted leading-tight">Академический разбор.</div>
+                                            <div className="font-bold text-white text-sm mb-0.5">{tr(uiLang, 'tutor')}</div>
+                                            <div className="text-[10px] text-muted leading-tight">{tr(uiLang, 'academic_analysis')}</div>
                                         </button>
                                     </div>
                                     <div className="mt-4 pt-3 border-t border-border flex items-center justify-center gap-2">
@@ -351,7 +546,7 @@
                         ))}
                     </div>
                     <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors text-white"><Icons.X /></button></div>
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">{tr(uiLang, 'stars_shop')}</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors text-white"><Icons.X /></button></div>
                         <div className="space-y-3 mb-8">
                             {packages.map((p, i) => (
                                 <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
@@ -361,10 +556,10 @@
                             ))}
                         </div>
                         <div className="pt-6 border-t border-border">
-                            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-2 text-center">Партнерская программа</h3>
-                            <p className="text-[11px] text-muted text-center mb-4 leading-relaxed">Получай <b>+30 токенов</b> сразу и <b>20% вознаграждения</b> в Stars от всех покупок друга!</p>
+                            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-2 text-center">{tr(uiLang, 'affiliate_program')}</h3>
+                            <p className="text-[11px] text-muted text-center mb-4 leading-relaxed">{tr(uiLang, 'affiliate_desc')}</p>
                             <button onClick={inviteFriend} className="w-full p-4 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center gap-3 text-accent font-bold hover:bg-accent/20 transition-all active:scale-95">
-                                <Icons.UserPlus /> Стать партнером
+                                <Icons.UserPlus /> {tr(uiLang, 'become_partner')}
                             </button>
                         </div>
                     </div>
@@ -377,19 +572,19 @@
             return (
                 <div className="modal-overlay">
                     <div className="modal-content text-center">
-                        <h2 className="text-xl font-bold mb-6 gradient-text font-display">Как пользоваться?</h2>
+                        <h2 className="text-xl font-bold mb-6 gradient-text font-display">{tr(uiLang, 'how_to_use')}</h2>
                         <div className="space-y-6 text-sm text-left mb-8">
                             <div className="flex items-start gap-4">
                                 <div className="explain-btn !static !m-0 !shrink-0 flex-none">?</div>
-                                <p className="leading-relaxed">Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики, перевода и транскрипции.</p>
+                                <p className="leading-relaxed">{tr(uiLang, 'hint_explain')}</p>
                             </div>
                             <div className="flex items-start gap-4">
                                 <div className="credits-badge !static !m-0 !shrink-0 flex-none"><Icons.Gem /></div>
-                                <p className="leading-relaxed">Нажми на бриллиант, чтобы <b>пополнить баланс</b> или пригласить друга (+30 токенов).</p>
+                                <p className="leading-relaxed">{tr(uiLang, 'hint_gem')}</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="btn-primary">Понятно!</button>
-                        <button onClick={() => { localStorage.setItem('lingvo_hint_seen', 'true'); onClose(); }} className="text-xs text-muted mt-6 block w-full hover:text-white transition-all">Не показывать больше</button>
+                        <button onClick={onClose} className="btn-primary">{tr(uiLang, 'got_it')}</button>
+                        <button onClick={() => { localStorage.setItem('lingvo_hint_seen', 'true'); onClose(); }} className="text-xs text-muted mt-6 block w-full hover:text-white transition-all">{tr(uiLang, 'dont_show_again')}</button>
                     </div>
                 </div>
             );
@@ -404,21 +599,21 @@
                         <div className="w-16 h-16 bg-accent/10 text-accent rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 8 6 6 6-6"/></svg>
                         </div>
-                        <h2 className="text-lg font-black mb-3 text-white">Выбирай любой язык!</h2>
-                        <p className="text-xs text-muted leading-relaxed mb-6">Теперь в левом верхнем углу ты можешь сменить язык обучения. Доступны: английский, немецкий, французский, испанский, итальянский, японский, китайский и корейский!</p>
+                        <h2 className="text-lg font-black mb-3 text-white">{tr(uiLang, 'choose_any_lang')}</h2>
+                        <p className="text-xs text-muted leading-relaxed mb-6">{tr(uiLang, 'lang_hint_text')}</p>
                         
-                        <button onClick={() => { if(dontShow) localStorage.setItem('lingvo_lang_hint_seen', 'true'); onClose(); }} className="btn-primary !py-3 !text-sm">Понятно</button>
+                        <button onClick={() => { if(dontShow) localStorage.setItem('lingvo_lang_hint_seen', 'true'); onClose(); }} className="btn-primary !py-3 !text-sm">{tr(uiLang, 'got_it')}</button>
                         
                         <div className="mt-4 flex items-center justify-center gap-2">
                             <input type="checkbox" id="dontShowLang" checked={dontShow} onChange={e=>setDontShow(e.target.checked)} className="w-3.5 h-3.5 accent-accent" />
-                            <label htmlFor="dontShowLang" className="text-[10px] text-muted cursor-pointer select-none">Больше не показывать</label>
+                            <label htmlFor="dontShowLang" className="text-[10px] text-muted cursor-pointer select-none">{tr(uiLang, 'dont_show_again_lang')}</label>
                         </div>
                     </div>
                 </div>
             );
         }
 
-        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang, uiLang }) {
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
             useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
@@ -451,10 +646,10 @@
                                             )}
                                             <div className="whitespace-pre-wrap font-medium">{isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}</div>
                                             {m.role === 'user' && m.correction && (
-                                                <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">Репетитор советует:</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
+                                                <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">{tr(uiLang, 'tutor_advises')}</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
                                             )}
                                             {m.role === 'assistant' && !isAiLoading && m.translation && (
-                                                <div className="mt-2 pt-2 border-t border-borderLight">{!visTrans[m.id] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[m.id]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}</div>
+                                                <div className="mt-2 pt-2 border-t border-borderLight">{!visTrans[m.id] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[m.id]:true})}><Icons.Eye />{tr(uiLang, 'translation')}</div> : <div className="text-muted text-sm italic">{m.translation}</div>}</div>
                                             )}
                                         </>
                                     )}
@@ -465,22 +660,22 @@
                     </main>
                     <footer className="bottom-panel">
                         {suggestions.length > 0 && !loading && (<div className="suggestions-ribbon">{suggestions.map((s, i) => (<button key={i} onClick={()=>onSend(s.en)} className="suggestion-pill"><span className="en">{s.en}</span><span className="ru">{s.ru}</span></button>))}</div>)}
-                        <div className="input-bar"><input className="input-field flex-1" placeholder={`Type in ${lang}...`} value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={()=>onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white hover:scale-105 active:scale-95 transition-all"><Icons.Send /></button></div>
+                        <div className="input-bar"><input className="input-field flex-1" placeholder={`${tr(uiLang, 'type_in_lang')} ${lang}...`} value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={()=>onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white hover:scale-105 active:scale-95 transition-all"><Icons.Send /></button></div>
                     </footer>
                 </div>
             );
         }
 
-        function LowBalanceModal({ isOpen, onClose, onShopOpen }) {
+        function LowBalanceModal({ isOpen, onClose, onShopOpen, uiLang }) {
             if (!isOpen) return null;
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
-                        <h2 className="text-2xl font-bold mb-4 font-display text-white">Токены закончились</h2>
+                        <h2 className="text-2xl font-bold mb-4 font-display text-white">{tr(uiLang, 'tokens_empty')}</h2>
                         <p className="text-muted mb-8 leading-relaxed">Для продолжения обучения пополни баланс или пригласи друга и получи <b>+20 токенов</b>.</p>
                         <div className="space-y-3">
-                            <button onClick={onShopOpen} className="btn-primary">Перейти в магазин</button>
-                            <button onClick={inviteFriend} className="btn-secondary flex items-center justify-center gap-2"><Icons.UserPlus /> Пригласить друга (+30)</button>
+                            <button onClick={onShopOpen} className="btn-primary">{tr(uiLang, 'go_to_shop')}</button>
+                            <button onClick={inviteFriend} className="btn-secondary flex items-center justify-center gap-2"><Icons.UserPlus /> {tr(uiLang, 'invite_friend')}</button>
                         </div>
                     </div>
                 </div>
@@ -491,9 +686,9 @@
             return (
                 <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-10 text-center">
                     <div className="w-24 h-24 bg-accent/10 rounded-3xl flex items-center justify-center mb-8 animate-bounce"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-                    <h2 className="text-2xl font-bold mb-4 font-display gradient-text text-white">Только для мобильных устройств</h2>
-                    <p className="text-muted leading-relaxed">Извини, но lingvo.ai оптимизирован для работы на смартфонах. Пожалуйста, открой это приложение через мобильную версию Telegram для лучшего опыта обучения. 📱</p>
-                    <div className="mt-10 p-4 border border-border rounded-2xl bg-surface/50 text-xs text-muted">Версия для ПК временно недоступна</div>
+                    <h2 className="text-2xl font-bold mb-4 font-display gradient-text text-white">{tr(uiLang, 'mobile_only')}</h2>
+                    <p className="text-muted leading-relaxed">{tr(uiLang, 'mobile_only_desc')}</p>
+                    <div className="mt-10 p-4 border border-border rounded-2xl bg-surface/50 text-xs text-muted">{tr(uiLang, 'pc_version_unavailable')}</div>
                 </div>
             );
         }
@@ -505,6 +700,7 @@
             const [character, setCharacter] = useState('');
             const [situation, setSituation] = useState('');
             const [selectedLang, setSelectedLang] = useState(localStorage.getItem('lingvo_lang') || 'English');
+            const [uiLang, setUiLang] = useState(localStorage.getItem('lingvo_ui_lang') || 'en');
             const [messages, setMessages] = useState([]);
             const [input, setInput] = useState('');
             const [suggestions, setSuggestions] = useState([]);
@@ -524,6 +720,7 @@
             }, []);
 
             useEffect(() => { localStorage.setItem('lingvo_lang', selectedLang); }, [selectedLang]);
+            useEffect(() => { localStorage.setItem('lingvo_ui_lang', uiLang); }, [uiLang]);
 
             const platform = tg?.platform || 'unknown';
             const isPC = ['tdesktop', 'web', 'macos'].includes(platform);
@@ -649,10 +846,10 @@
             
             return (
                 <>
-                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} />)}
+                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} uiLang={uiLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} uiLang={uiLang} />)}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
                     {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
-                    <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
+                    <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} uiLang={uiLang} />
                     <OnboardingModal isOpen={isHintOpen} onClose={() => setIsHintOpen(false)} />
                     <LanguageHintModal isOpen={isLangHintOpen} onClose={() => setIsLangHintOpen(false)} />
                 </>
