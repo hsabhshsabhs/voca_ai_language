@@ -251,14 +251,14 @@
                     <div className="flex justify-between items-center mb-8">
                         <div className="relative">
                             <div onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center gap-2 bg-surface border border-border px-2 py-1.5 rounded-lg cursor-pointer hover:bg-surfaceHover transition-all">
-                                <img src={`https://flagcdn.com/w40/${currentLang.flag}.png`} className="w-6 h-auto rounded-sm" alt="" />
+                                <img src={`https://flagcdn.com/w40/${currentLang.flag}.png`} className="w-6 h-4 object-cover rounded-sm" alt="" />
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isLangOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
                             </div>
                             {isLangOpen && (
                                 <div className="absolute top-full left-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl z-[100] w-40 overflow-hidden animate-in fade-in slide-in-from-top-2">
                                     {languages.map(l => (
                                         <div key={l.id} onClick={() => { setSelectedLang(l.id); setIsLangOpen(false); }} className={`p-2.5 flex items-center gap-3 hover:bg-accent/10 cursor-pointer transition-colors ${selectedLang === l.id ? 'bg-accent/20 text-white' : 'text-muted'}`}>
-                                            <img src={`https://flagcdn.com/w40/${l.flag}.png`} className="w-6 h-auto rounded-sm" alt="" />
+                                            <img src={`https://flagcdn.com/w40/${l.flag}.png`} className="w-6 h-4 object-cover rounded-sm" alt="" />
                                             <span className="font-bold text-xs">{l.label}</span>
                                         </div>
                                     ))}
@@ -324,7 +324,7 @@
                                     </div>
                                 </div>
                             ) : (
-                                <div className="analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content ? content.replace(/__+/g, " ") : "")}} />
+                                <div className="analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content ? content.replace(/_{2,}/g, " ") : "")}} />
                             )}
                         </div>
                     </div>
