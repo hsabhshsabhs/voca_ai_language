@@ -45,14 +45,15 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 4px; }
         
-        #root { display: flex; justify-content: center; background: #050508; height: 100%; width: 100vw; overflow: hidden; }
-        .app-layout { display: flex; flex-direction: column; height: 100dvh; height: 100vh; width: 100%; max-width: 600px; margin: 0 auto; background: #0a0a0f; position: relative; border-left: 1px solid #1f1f2e; border-right: 1px solid #1f1f2e; box-shadow: 0 0 50px rgba(0,0,0,0.5); overflow: hidden; }
+        #root { display: flex; align-items: center; justify-content: center; background: #050508; height: 100%; width: 100vw; overflow: hidden; }
+        .app-layout { display: flex; flex-direction: column; height: 100dvh; height: 100vh; width: 100%; max-width: 600px; margin: 0 auto; background: #0a0a0f; position: relative; border-left: 1px solid #1f1f2e; border-right: 1px solid #1f1f2e; box-shadow: 0 0 50px rgba(0,0,0,0.5); overflow: hidden; min-height: 100dvh; }
         
         @media (min-width: 640px) {
             #root { align-items: center; }
             .app-layout { 
-                height: 90vh !important; 
-                max-height: 850px; 
+                height: 100vh !important; 
+                min-height: 100vh !important;
+                max-height: 100vh; 
                 max-width: 420px;
                 border-radius: 2.5rem; 
                 border: 1px solid #1f1f2e; 
@@ -318,7 +319,6 @@
             
             return (
                 <div className="app-layout p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
-
                     <div className="flex justify-between items-center mb-8 relative z-30">
                         <div className="relative">
                             <div onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center gap-2 bg-surface border border-border px-2 py-1.5 rounded-lg cursor-pointer hover:bg-surfaceHover transition-all">
@@ -349,7 +349,7 @@
                             <h2 className="font-semibold mb-2 flex items-center gap-2 text-accent"><Icons.Sparkles /> Быстрый старт</h2>
                             <div className="grid grid-cols-2 gap-3 mt-4">
                                 {presets.map((p, i) => (
-                                    <button key={i} onClick={()=>{setCharacter(p.char); setSituation(p.sit);}} className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
+                                    <button key={i} onClick={() => { setCharacter(p.char); setSituation(p.sit); }} className={`feature-card ${character===p.char && situation===p.sit ? 'active' : (!isAnyPresetActive ? `animate-preset-${i}` : '')}`}>
                                         <div className="font-semibold text-sm">{p.label}</div>
                                         <div className="text-[10px] text-muted tracking-tight">{p.labelSit}</div>
                                     </button>
@@ -395,7 +395,7 @@
                                     </div>
                                 </div>
                             ) : (
-                                <div className="analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content ? content.replace(/_{2,}/g, " ") : "")}} />
+                                <div className="analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content ? content.replace(/_/g, "") : "")}} />
                             )}
                         </div>
                     </div>
@@ -575,7 +575,7 @@
                                                 <div className="bubble-footer">
                                                     {m.role === 'assistant' && m.translation ? (
                                                         !visTrans[mid] ? (
-                                                            <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div>
+                                                            <div className="show-trans-btn" onClick={() => setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div>
                                                         ) : (
                                                             <div className="text-muted text-sm italic">{m.translation}</div>
                                                         )
@@ -590,8 +590,8 @@
                         <div ref={scrollRef} />
                     </main>
                     <footer className="bottom-panel">
-                        {suggestions.length > 0 && !loading && (<div className="suggestions-ribbon">{suggestions.map((s, i) => (<button key={i} onClick={()=>onSend(s.en)} className="suggestion-pill"><span className="en">{s.en}</span><span className="ru">{s.ru}</span></button>))}</div>)}
-                        <div className="input-bar"><input className="input-field flex-1" placeholder={`Type in ${lang}...`} value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={()=>onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white active:scale-95 transition-all"><Icons.Send /></button></div>
+                        {suggestions.length > 0 && !loading && (<div className="suggestions-ribbon">{suggestions.map((s, i) => (<button key={i} onClick={() => onSend(s.en)} className="suggestion-pill"><span className="en">{s.en}</span><span className="ru">{s.ru}</span></button>))}</div>)}
+                        <div className="input-bar"><input className="input-field flex-1" placeholder={`Type in ${lang}...`} value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={() => onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white active:scale-95 transition-all"><Icons.Send /></button></div>
                     </footer>
                 </div>
             );
@@ -719,12 +719,12 @@
             return (
                 <>
                     {step === 'setup' ? (
-                        <SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />
+                        <SetupScreen onStart={() => {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={() => setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />
                     ) : (
-                        <ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} onSpeak={speakText} speakingId={speakingId} />
+                        <ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={() => setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} onSpeak={speakText} speakingId={speakingId} />
                     )}
-                    <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
-                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => fetchCredits()} />}
+                    <AnalysisModal {...analysisModal} onClose={() => setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
+                    {isShopOpen && <ShopModal onClose={() => setIsShopOpen(false)} token={token} onPurchaseSuccess={() => fetchCredits()} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
                     <OnboardingModal isOpen={isHintOpen} onClose={() => setIsHintOpen(false)} />
                     <LanguageHintModal isOpen={isLangHintOpen} onClose={() => setIsLangHintOpen(false)} />
