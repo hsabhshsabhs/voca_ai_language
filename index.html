@@ -609,14 +609,16 @@
 
             const onSend = (txt) => { if (!txt.trim() || loading) return; const next = [...messages, { role: 'user', content: txt, id: Date.now() }]; setMessages(next); setInput(''); triggerAI(next.map(m=>({role:m.role, content:m.content}))); };
             
-            const onAnalyzeClick = (id, txt) => {
-                setAnalysisModal({ isOpen: true, content: '', loading: false, pendingId: id, pendingTxt: txt });
-            };
-
-            const startAnalysis = async (mode) => {
-                const { pendingId, pendingTxt } = analysisModal;
+            const startAnalysis = async (mode, remember = false, overrideTxt = null, overrideId = null) => {
+                const pendingId = overrideId || analysisModal.pendingId;
+                const pendingTxt = overrideTxt || analysisModal.pendingTxt;
+                
+                if (remember) setActiveExplainMode(mode);
+                
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
-                setAnalysisLoading(pendingId); setAnalysisModal(prev => ({ ...prev, loading: true }));
+                setAnalysisLoading(pendingId); 
+                setAnalysisModal(prev => ({ ...prev, isOpen: true, loading: true, pendingId, pendingTxt, content: '' }));
+                
                 try {
                     const res = await fetch(`${API_BASE}/explain`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ text: pendingTxt, lang: selectedLang, mode }) });
                     if (res.status === 402) { setAnalysisModal(prev => ({ ...prev, isOpen: false })); setIsLowBalanceOpen(true); return; }
@@ -627,7 +629,15 @@
                 finally { setAnalysisLoading(null); fetchCredits(); }
             };
 
-            const clearHistory = () => { setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup'); };
+            const onAnalyzeClick = (id, txt) => {
+                if (activeExplainMode) {
+                    startAnalysis(activeExplainMode, false, txt, id);
+                } else {
+                    setAnalysisModal({ isOpen: true, content: '', loading: false, pendingId: id, pendingTxt: txt });
+                }
+            };
+
+            const clearHistory = () => { setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup'); setActiveExplainMode(null); };
 
             if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
             if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
