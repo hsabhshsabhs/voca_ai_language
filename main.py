@@ -17,6 +17,8 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, 
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from jose import jwt
 import aiohttp
+import edge_tts
+import io
 from dotenv import load_dotenv
 
 load_dotenv()
