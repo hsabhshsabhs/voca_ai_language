@@ -236,6 +236,38 @@
             tg.openTelegramLink(url);
         };
 
+        const FallingStars = () => (
+            <div className="stars-container">
+                {[...Array(15)].map((_, i) => (
+                    <div key={i} className="falling-star" style={{
+                        left: `${Math.random() * 100}%`,
+                        animationDuration: `${Math.random() * 4 + 3}s`,
+                        animationDelay: `${Math.random() * 5}s`,
+                        fontSize: `${Math.random() * 10 + 8}px`
+                    }}>✦</div>
+                ))}
+            </div>
+        );
+
+        function LowBalanceModal({ isOpen, onClose, onShopOpen }) {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
+                        <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Icons.Gem />
+                        </div>
+                        <h2 className="text-xl font-bold mb-2 text-white">Недостаточно токенов</h2>
+                        <p className="text-sm text-muted mb-6 leading-relaxed">Для продолжения диалога или получения разбора фразы нужны токены.</p>
+                        <div className="space-y-3">
+                            <button onClick={onShopOpen} className="btn-primary">Пополнить баланс</button>
+                            <button onClick={onClose} className="btn-secondary">Позже</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function SetupScreen({ onStart, character, setCharacter, situation, setSituation, credits, onShopOpen, rewardAnim, selectedLang, setSelectedLang }) {
             const [displayCredits, setDisplayCredits] = useState(credits);
             const [isPulsing, setIsPulsing] = useState(false);
@@ -286,17 +318,7 @@
             
             return (
                 <div className="app-layout p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
-                    {/* ГЕНЕРАЦИЯ ЗВЕЗДОЧЕК */}
-                    <div className="stars-container">
-                        {[...Array(15)].map((_, i) => (
-                            <div key={i} className="falling-star" style={{
-                                left: `${Math.random() * 100}%`,
-                                animationDuration: `${Math.random() * 4 + 3}s`,
-                                animationDelay: `${Math.random() * 5}s`,
-                                fontSize: `${Math.random() * 10 + 8}px`
-                            }}>✦</div>
-                        ))}
-                    </div>
+                    <FallingStars />
 
                     <div className="flex justify-between items-center mb-8 relative z-20">
                         <div className="relative">
@@ -385,34 +407,70 @@
         function ShopModal({ onClose, token, onPurchaseSuccess }) {
             const [loading, setLoading] = useState(false);
             const packages = [{ stars: 50, credits: 100 }, { stars: 100, credits: 250 }, { stars: 500, credits: 1500 }];
+            
             const buy = async (amount) => {
+                if (loading) return;
                 setLoading(true);
                 try {
-                    // ДОБАВЛЕНО: 'Authorization': `Bearer ${token}` для корректной работы магазина
                     const res = await fetch(`${API_BASE}/create-invoice`, { 
                         method: 'POST', 
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+                        headers: { 
+                            'Content-Type': 'application/json', 
+                            'Authorization': `Bearer ${token}` 
+                        }, 
                         body: JSON.stringify({ amount }) 
                     });
+                    
+                    if (!res.ok) throw new Error('Server error');
+                    
                     const data = await res.json();
                     if (data.invoice_link) { 
-                        tg.openInvoice(data.invoice_link, (status) => { 
-                            if (status === 'paid') { onPurchaseSuccess(); onClose(); } 
-                        }); 
+                        if (tg && tg.openInvoice) {
+                            tg.openInvoice(data.invoice_link, (status) => { 
+                                if (status === 'paid') { 
+                                    onPurchaseSuccess(); 
+                                    onClose(); 
+                                } 
+                                setLoading(false);
+                            }); 
+                        } else {
+                            // Fallback for browser testing
+                            window.open(data.invoice_link, '_blank');
+                            setLoading(false);
+                        }
                     } else {
-                        alert("Не удалось создать счет");
+                        alert("Не удалось создать счет. Попробуйте позже.");
+                        setLoading(false);
                     }
-                } catch (e) { alert("Ошибка соединения"); } finally { setLoading(false); }
+                } catch (e) { 
+                    console.error(e);
+                    alert("Ошибка соединения. Проверьте интернет."); 
+                    setLoading(false); 
+                }
             };
+
             return (
                 <div className="modal-overlay" onClick={onClose}>
-                    <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors text-white"><Icons.X /></button></div>
+                    <FallingStars />
+                    <div className="modal-content relative z-[110]" onClick={e=>e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors text-white">
+                                <Icons.X />
+                            </button>
+                        </div>
                         <div className="space-y-3 mb-8">
                             {packages.map((p, i) => (
-                                <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
+                                <button 
+                                    key={i} 
+                                    onClick={() => buy(p.stars)} 
+                                    disabled={loading} 
+                                    className={`w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95 ${loading ? 'opacity-50 cursor-wait' : ''}`}
+                                >
                                     <div className="font-bold text-lg text-white">{p.credits} токенов</div>
-                                    <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold">{p.stars} ⭐</div>
+                                    <div className="bg-accent/10 text-accent px-3 py-1 rounded-lg font-bold flex items-center gap-1">
+                                        {loading ? <div className="dot-pulse"><span></span><span></span></div> : <>{p.stars} ⭐</>}
+                                    </div>
                                 </button>
                             ))}
                         </div>
