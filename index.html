@@ -431,18 +431,34 @@
                                     ) : (
                                         <>
                                             {!isAiLoading && m.content && m.role !== 'promo' && (
-                                                <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(mid, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === mid ? 'loading' : ''}`}><Icons.Help /></div>
+                                                <div 
+                                                    onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(mid, m.content); }} 
+                                                    className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === mid ? 'loading' : ''}`}
+                                                >
+                                                    ?
+                                                </div>
                                             )}
-                                            <div className="whitespace-pre-wrap font-medium">{isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}</div>
+                                            <div className="whitespace-pre-wrap font-medium">
+                                                {isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}
+                                            </div>
+
                                             {m.role === 'user' && m.correction && (
                                                 <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">Репетитор советует:</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
                                             )}
-                                            {m.role === 'assistant' && !isAiLoading && m.translation && (
-                                                <div className="mt-2 pt-2 border-t border-borderLight">{!visTrans[mid] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}</div>
-                                            )}
+
                                             {!isAiLoading && m.content && m.role !== 'promo' && (
-                                                <div className="bubble-actions">
-                                                    <div onClick={() => onSpeak(m.content, mid)} className={`action-icon-btn speak-btn ${speakingId === mid ? 'speaking' : ''}`}><Icons.Volume /></div>
+                                                <div className="bubble-footer">
+                                                    {m.role === 'assistant' && m.translation ? (
+                                                        !visTrans[mid] ? (
+                                                            <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div>
+                                                        ) : (
+                                                            <div className="text-muted text-sm italic">{m.translation}</div>
+                                                        )
+                                                    ) : <div />}
+
+                                                    <div onClick={() => onSpeak(m.content, mid)} className={`action-icon-btn speak-btn ${speakingId === mid ? 'speaking' : ''}`}>
+                                                        <Icons.Volume />
+                                                    </div>
                                                 </div>
                                             )}
                                         </>
