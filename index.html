@@ -40,40 +40,31 @@
     </script>
     <style>
         * { box-sizing: border-box; }
-        html, body, #root { height: 100%; margin: 0; padding: 0; background-color: #050508; color: #f4f4f5; }
-        body { font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
-        
-        /* ЦЕНТРИРОВАНИЕ НА ПК */
-        #root { display: flex; justify-content: center; align-items: center; width: 100vw; height: 100dvh; background: #050508; }
-
-        .app-layout { 
-            display: flex; 
-            flex-direction: column; 
-            height: 100%; 
-            width: 100%; 
-            max-width: 600px; 
-            background: #0a0a0f; 
-            position: relative; 
-            overflow: hidden; 
-        }
-
-        @media (min-width: 600px) {
-            .app-layout {
-                max-width: 420px;
-                height: 92vh;
-                max-height: 850px;
-                border: 1px solid #1f1f2e;
-                border-radius: 2.5rem;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-            }
-        }
-        
+        html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #050508; color: #f4f4f5; }
+        body { font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 4px; }
         
-        .app-header { height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; background: #111118; border-bottom: 1px solid #1f1f2e; z-index: 50; flex-shrink: 0; }
+        #root { display: flex; justify-content: center; background: #050508; height: 100%; width: 100vw; overflow: hidden; }
+        .app-layout { display: flex; flex-direction: column; height: 100dvh; height: 100vh; width: 100%; max-width: 600px; margin: 0 auto; background: #0a0a0f; position: relative; border-left: 1px solid #1f1f2e; border-right: 1px solid #1f1f2e; box-shadow: 0 0 50px rgba(0,0,0,0.5); overflow: hidden; }
         
-        .chat-zone { flex: 1; overflow-y: auto; padding: 1.25rem; background: radial-gradient(ellipse at top, #111118 0%, #0a0a0f 50%); scroll-behavior: smooth; display: flex; flex-direction: column; }
+        /* === ДОБАВЛЕНО ДЛЯ ПК (МОБИЛЬНЫЙ ВИД) === */
+        @media (min-width: 640px) {
+            #root { align-items: center; }
+            .app-layout { 
+                height: 90vh !important; 
+                max-height: 850px; 
+                max-width: 420px;
+                border-radius: 2.5rem; 
+                border: 1px solid #1f1f2e; 
+                box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); 
+            }
+        }
+        
+        .app-header { height: 60px; min-height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; background: #111118; border-bottom: 1px solid #1f1f2e; z-index: 50; flex-shrink: 0; }
+        
+        /* Уменьшили боковые отступы (было 85px), так как кнопка звука ушла внутрь */
+        .chat-zone { flex: 1; overflow-y: auto; padding: 1rem 50px; background: radial-gradient(ellipse at top, #111118 0%, #0a0a0f 50%); scroll-behavior: smooth; display: flex; flex-direction: column; }
         
         .bottom-panel { display: flex; flex-direction: column; border-top: 1px solid #1f1f2e; background: #111118; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); flex-shrink: 0; z-index: 40; }
         .input-bar { min-height: 64px; padding: 0.75rem 1rem; display: flex; gap: 0.75rem; align-items: center; background: #0a0a0f; }
@@ -86,27 +77,29 @@
         .suggestion-pill .en { font-size: 0.9375rem; font-weight: 700; color: #f4f4f5; display: block; overflow: hidden; text-overflow: ellipsis; }
         .suggestion-pill .ru { font-size: 11px; color: #71717a; display: block; font-weight: 400; margin-top: 2px; }
         
-        .bubble { max-width: 88%; border-radius: 1.25rem; padding: 0.875rem 1rem; margin-bottom: 0.75rem; position: relative; font-size: 0.9375rem; line-height: 1.5; animation: slideIn 0.3s ease-out; }
+        .bubble { max-width: 95%; border-radius: 1.25rem; padding: 0.875rem 1rem; margin-bottom: 0.75rem; position: relative; font-size: 0.9375rem; line-height: 1.5; animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .bubble.user { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; margin-left: auto; border-bottom-right-radius: 0.375rem; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3); }
         .bubble.ai { background: #1a1a24; color: #f4f4f5; border-bottom-left-radius: 0.375rem; border: 1px solid #2a2a3e; align-self: flex-start; }
         
         .bubble-side-actions { position: absolute; top: 0; display: flex; gap: 6px; z-index: 20; }
-        .bubble.ai .bubble-side-actions { right: -42px; }
-        .bubble.user .bubble-side-actions { left: -42px; }
+        .bubble.ai .bubble-side-actions { right: -42px; flex-direction: row; }
+        .bubble.user .bubble-side-actions { left: -42px; flex-direction: row-reverse; }
 
         .explain-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: pointer; flex-shrink: 0; background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); font-weight: bold; font-size: 14px; }
-        .explain-btn:hover { transform: scale(1.1); background: rgba(251, 191, 36, 0.2); }
         .explain-btn.disabled { opacity: 0.2 !important; cursor: default !important; pointer-events: none; }
         .explain-btn.loading { animation: rotate 1s linear infinite; }
+        .bubble.user .explain-btn { background: rgba(255, 255, 255, 0.05); color: #818cf8; border-color: rgba(129, 140, 248, 0.3); }
+        .explain-btn:hover { transform: scale(1.1); background: rgba(255, 255, 255, 0.15); }
         
+        /* === ДОБАВЛЕНО ДЛЯ КНОПКИ ОЗВУЧКИ === */
         .speak-btn-inline { 
             display: inline-flex; 
             align-items: center; 
             justify-content: center; 
-            width: 26px; 
-            height: 26px; 
+            width: 24px; 
+            height: 24px; 
             border-radius: 50%; 
             background: rgba(129, 140, 248, 0.15); 
             color: #818cf8; 
@@ -118,7 +111,6 @@
         }
         .speak-btn-inline:active { transform: scale(0.9); }
         .speak-btn-inline.speaking { animation: pulse-speak 1.5s infinite; background: #6366f1; color: white; border-color: #6366f1; }
-        
         .bubble.user .speak-btn-inline { background: rgba(255, 255, 255, 0.15); color: white; border-color: rgba(255, 255, 255, 0.3); }
         
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -127,8 +119,8 @@
         .bubble-footer { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
         .bubble.user .bubble-footer { justify-content: flex-end; }
 
-        .modal-overlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); z-index: 1000; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
-        .modal-content { background: #111118; width: 100%; max-width: 380px; border-radius: 1.5rem; padding: 1.5rem; border: 1px solid #2a2a3e; position: relative; z-index: 100; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); z-index: 1000; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        .modal-content { background: #111118; width: 100%; max-width: 420px; border-radius: 1.5rem; padding: 1.5rem; border: 1px solid #2a2a3e; position: relative; z-index: 100; }
         
         .show-trans-btn { color: #818cf8; font-size: 0.8125rem; font-weight: 500; margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; }
         
@@ -156,10 +148,10 @@
         .correction-panel .corrected { color: #22c55e; font-weight: 600; }
         .correction-panel .explanation { color: #a1a1aa; margin-top: 0.25rem; font-size: 0.75rem; font-style: italic; }
         
-        .analysis-modal { background: #0a0a0f; width: 100%; max-width: 360px; max-height: 80vh; border-radius: 2rem; border: 1px solid #1f1f2e; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; }
+        .analysis-modal { background: #0a0a0f; width: 100%; max-width: 600px; max-height: 85vh; border-radius: 2rem; border: 1px solid #1f1f2e; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; }
         .analysis-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #1f1f2e; background: #111118; }
-        .analysis-modal-content { flex: 1; overflow-y: auto; line-height: 1.7; }
-        .analysis-modal-content h3 { color: #818cf8; font-weight: 700; border-bottom: 2px solid rgba(99, 102, 241, 0.2); padding-bottom: 4px; margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1rem; }
+        .analysis-modal-content { flex: 1; overflow-y: auto; padding: 1.5rem; line-height: 1.7; }
+        .analysis-modal-content h3 { color: #818cf8; font-weight: 700; border-bottom: 2px solid rgba(99, 102, 241, 0.2); padding-bottom: 4px; margin-top: 1.5rem; margin-bottom: 0.75rem; }
         .analysis-modal-content strong { color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 0 4px; border-radius: 4px; }
         
         .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -179,6 +171,18 @@
         .animate-preset-2 { animation: glow-pulse 4s infinite 2s; }
         .animate-preset-3 { animation: glow-pulse 4s infinite 3s; }
 
+        .stars-container { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; opacity: 0.5; }
+        .falling-star { position: absolute; top: 0; color: #fbbf24; animation: star-fall linear infinite; filter: blur(0.3px); opacity: 0; }
+        @keyframes star-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        .btn-secondary { width: 100%; padding: 1.125rem; background: rgba(255, 255, 255, 0.05); color: #f4f4f5; border: 1px solid #2a2a3e; border-radius: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-secondary:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.1); }
+
         @keyframes float-up {
             0% { transform: translateY(0); opacity: 1; }
             100% { transform: translateY(-40px); opacity: 0; }
@@ -194,7 +198,9 @@
             animation: float-up 1.5s forwards;
             z-index: 100;
         }
-        .credits-badge.pulse { animation: badge-pulse 0.5s ease-in-out; }
+        .credits-badge.pulse {
+            animation: badge-pulse 0.5s ease-in-out;
+        }
         @keyframes badge-pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
@@ -222,7 +228,7 @@
             X: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
             Sparkles: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>,
             UserPlus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
-            Volume: () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>,
+            Volume: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>,
             Help: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
         };
 
@@ -243,23 +249,37 @@
                 if (rewardAnim) {
                     setDisplayCredits(credits - 15);
                     setTimeout(() => {
-                        let start = credits - 15; const end = credits; setIsPulsing(true);
+                        let start = credits - 15;
+                        const end = credits;
+                        setIsPulsing(true);
                         const interval = setInterval(() => {
-                            if (start < end) { start++; setDisplayCredits(start); } 
-                            else { clearInterval(interval); setTimeout(() => setIsPulsing(false), 500); }
+                            if (start < end) {
+                                start++;
+                                setDisplayCredits(start);
+                            } else {
+                                clearInterval(interval);
+                                setTimeout(() => setIsPulsing(false), 500);
+                            }
                         }, 50);
                     }, 1000);
-                } else { setDisplayCredits(credits); }
+                } else {
+                    setDisplayCredits(credits);
+                }
             }, [credits, rewardAnim]);
 
             const languages = [
-                { id: 'English', label: 'English', flag: 'gb' }, { id: 'German', label: 'Deutsch', flag: 'de' },
-                { id: 'French', label: 'Français', flag: 'fr' }, { id: 'Spanish', label: 'Español', flag: 'es' },
-                { id: 'Italian', label: 'Italiano', flag: 'it' }, { id: 'Japanese', label: '日本語', flag: 'jp' },
-                { id: 'Chinese', label: '中文', flag: 'cn' }, { id: 'Korean', label: '한국어', flag: 'kr' },
+                { id: 'English', label: 'English', flag: 'gb' },
+                { id: 'German', label: 'Deutsch', flag: 'de' },
+                { id: 'French', label: 'Français', flag: 'fr' },
+                { id: 'Spanish', label: 'Español', flag: 'es' },
+                { id: 'Italian', label: 'Italiano', flag: 'it' },
+                { id: 'Japanese', label: '日本語', flag: 'jp' },
+                { id: 'Chinese', label: '中文', flag: 'cn' },
+                { id: 'Korean', label: '한국어', flag: 'kr' },
             ];
 
             const currentLang = languages.find(l => l.id === selectedLang) || languages[0];
+
             const presets = [
                 { char: "Бариста", sit: "Заказ кофе", label: "Бариста", labelSit: "Заказ кофе" },
                 { char: "Доктор", sit: "Прием у врача", label: "Врач", labelSit: "Прием у врача" },
@@ -267,7 +287,6 @@
                 { char: "Продавец", sit: "Покупка одежды", label: "Продавец", labelSit: "Покупка одежды" },
             ];
             const isAnyPresetActive = presets.some(p => character === p.char && situation === p.sit);
-
             return (
                 <div className="app-layout p-6" style={{ background: 'radial-gradient(ellipse at center top, #111118 0%, #0a0a0f 60%)' }}>
                     <div className="flex justify-between items-center mb-8">
@@ -322,13 +341,13 @@
             if (!isOpen) return null;
             return (
                 <div className="modal-overlay" onClick={onClose}>
-                    <div className="analysis-modal" onClick={e=>e.stopPropagation()}>
+                    <div className="analysis-modal !max-w-[340px]" onClick={e=>e.stopPropagation()}>
                         <div className="analysis-modal-header !py-3"><h2 className="font-bold gradient-text text-sm">{loading ? "Анализирую..." : "Разбор фразы"}</h2><button onClick={onClose} className="p-1 hover:bg-surfaceHover rounded-full"><Icons.X /></button></div>
-                        <div className="analysis-modal-content">
+                        <div className="analysis-modal-content !p-4">
                             {loading ? (
                                 <div className="py-6 text-center"><div className="waiting-animation !mb-3"><div></div><div></div><div></div></div><p className="text-muted text-[10px] italic font-medium px-4">Готовлю подробный ответ...</p></div>
                             ) : !content ? (
-                                <div className="p-4">
+                                <div>
                                     <p className="text-center text-xs font-bold mb-4 text-white">Выбери стиль объяснения:</p>
                                     <div className="grid gap-2">
                                         <button onClick={() => onModeSelect('informal', remember)} className="w-full p-3.5 bg-surface border border-border rounded-xl hover:border-accent transition-all text-left active:scale-95 group">
@@ -346,7 +365,7 @@
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-4 analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content ? content.replace(/_{2,}/g, " ") : "")}} />
+                                <div className="analysis-content-old-style text-xs leading-relaxed" dangerouslySetInnerHTML={{__html: marked.parse(content ? content.replace(/_{2,}/g, " ") : "")}} />
                             )}
                         </div>
                     </div>
@@ -361,14 +380,14 @@
                 setLoading(true);
                 try {
                     const res = await fetch(`${API_BASE}/create-invoice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) });
-                    const d = await res.json();
-                    if (d.invoice_link) { tg.openInvoice(d.invoice_link, (status) => { if (status === 'paid') { onPurchaseSuccess(); onClose(); } }); }
-                } catch (e) {} finally { setLoading(false); }
+                    const data = await res.json();
+                    if (data.invoice_link) { tg.openInvoice(data.invoice_link, (status) => { if (status === 'paid') { onPurchaseSuccess(); onClose(); } }); }
+                } catch (e) { alert("Ошибка"); } finally { setLoading(false); }
             };
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full text-white"><Icons.X /></button></div>
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors text-white"><Icons.X /></button></div>
                         <div className="space-y-3 mb-8">
                             {packages.map((p, i) => (
                                 <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
@@ -378,6 +397,7 @@
                             ))}
                         </div>
                         <div className="pt-6 border-t border-border">
+                            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-2 text-center">Партнерская программа</h3>
                             <button onClick={inviteFriend} className="w-full p-4 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center gap-3 text-accent font-bold hover:bg-accent/20 transition-all active:scale-95">
                                 <Icons.UserPlus /> Стать партнером
                             </button>
@@ -422,7 +442,6 @@
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
             useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
-            
             return (
                 <div className="app-layout">
                     <header className="app-header">
@@ -445,25 +464,45 @@
                                         </div>
                                     ) : (
                                         <>
-                                            {!isAiLoading && m.content && (
+                                            {!isAiLoading && m.content && m.role !== 'promo' && (
                                                 <div className="bubble-side-actions">
-                                                    <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(mid, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === mid ? 'loading' : ''}`}>?</div>
+                                                    <div 
+                                                        onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(mid, m.content); }} 
+                                                        className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === mid ? 'loading' : ''}`}
+                                                    >
+                                                        ?
+                                                    </div>
                                                 </div>
                                             )}
-                                            <div className="font-medium">
+                                            <div className="font-medium inline">
                                                 {isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : (
-                                                    <div className="inline">
+                                                    <>
                                                         <span className="whitespace-pre-wrap">{m.content}</span>
-                                                        <button onClick={(e) => { e.stopPropagation(); onSpeak(m.content, mid); }} className={`speak-btn-inline ${speakingId === mid ? 'speaking' : ''}`}><Icons.Volume /></button>
-                                                    </div>
+                                                        {m.role !== 'promo' && (
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); onSpeak(m.content, mid); }} 
+                                                                className={`speak-btn-inline ${speakingId === mid ? 'speaking' : ''}`}
+                                                            >
+                                                                <Icons.Volume />
+                                                            </button>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
+
                                             {m.role === 'user' && m.correction && (
                                                 <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">Репетитор советует:</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
                                             )}
-                                            {!isAiLoading && m.role === 'assistant' && m.translation && (
+
+                                            {!isAiLoading && m.content && m.role !== 'promo' && (
                                                 <div className="bubble-footer">
-                                                    {!visTrans[mid] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}
+                                                    {m.role === 'assistant' && m.translation ? (
+                                                        !visTrans[mid] ? (
+                                                            <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div>
+                                                        ) : (
+                                                            <div className="text-muted text-sm italic">{m.translation}</div>
+                                                        )
+                                                    ) : null}
                                                 </div>
                                             )}
                                         </>
@@ -477,6 +516,18 @@
                         {suggestions.length > 0 && !loading && (<div className="suggestions-ribbon">{suggestions.map((s, i) => (<button key={i} onClick={()=>onSend(s.en)} className="suggestion-pill"><span className="en">{s.en}</span><span className="ru">{s.ru}</span></button>))}</div>)}
                         <div className="input-bar"><input className="input-field flex-1" placeholder={`Type in ${lang}...`} value={input} onChange={e=>setInput(e.target.value)} onKeyPress={e=>e.key==='Enter'&&onSend(input)} /><button onClick={()=>onSend(input)} disabled={!input.trim() || loading} className="w-12 h-12 flex items-center justify-center bg-accent rounded-xl text-white active:scale-95 transition-all"><Icons.Send /></button></div>
                     </footer>
+                </div>
+            );
+        }
+
+        function LowBalanceModal({ isOpen, onClose, onShopOpen }) {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content text-center" onClick={e=>e.stopPropagation()}>
+                        <h2 className="text-2xl font-bold mb-4 font-display text-white">Токены закончились</h2>
+                        <div className="space-y-3"><button onClick={onShopOpen} className="btn-primary">Перейти в магазин</button></div>
+                    </div>
                 </div>
             );
         }
@@ -500,17 +551,25 @@
             const [isLangHintOpen, setIsLangHintOpen] = useState(false);
             const [activeExplainMode, setActiveExplainMode] = useState(null);
             const [speakingId, setSpeakingId] = useState(null);
-            const [rewardAnim, setRewardAnim] = useState(false);
             const audioRef = useRef(new Audio());
 
             useEffect(() => {
-                if (!localStorage.getItem('lingvo_hint_seen')) { setIsHintOpen(true); localStorage.setItem('lingvo_hint_seen', 'true'); }
                 if (!localStorage.getItem('lingvo_lang_hint_seen')) setTimeout(() => setIsLangHintOpen(true), 1500);
                 audioRef.current.onended = () => setSpeakingId(null);
             }, []);
 
             useEffect(() => { localStorage.setItem('lingvo_lang', selectedLang); }, [selectedLang]);
 
+            const [rewardAnim, setRewardAnim] = useState(false);
+
+            const authenticate = async () => {
+                if (!tg?.initData) return;
+                try {
+                    const r = await fetch(`${API_BASE}/auth/telegram`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: tg.initData }) });
+                    const data = await r.json();
+                    if (data.access_token) { localStorage.setItem('lingvo_token', data.access_token); setToken(data.access_token); setCredits(data.credits); }
+                } catch (e) {}
+            };
             const fetchCredits = async () => {
                 if (!token) return;
                 try {
@@ -522,6 +581,7 @@
                     }
                 } catch(e) {}
             };
+            useEffect(() => { if (!token) authenticate(); else fetchCredits(); }, [token]);
 
             const triggerAI = async (hist) => {
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
@@ -530,8 +590,10 @@
                 setMessages(prev => [...prev, { role: 'assistant', content: '', id: aiMsgId }]);
                 try {
                     const res = await fetch(`${API_BASE}/chat_stream?token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character, situation, lang: selectedLang, history: hist }) });
-                    const reader = res.body.getReader(); const decoder = new TextDecoder();
-                    let fullContent = ""; let streamBuffer = ""; 
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullContent = "";
+                    let streamBuffer = ""; 
                     while (true) {
                         const { value, done } = await reader.read();
                         const chunk = value ? decoder.decode(value, { stream: true }) : "";
@@ -545,14 +607,13 @@
                                     const next = [...prev];
                                     const aiIdx = next.findIndex(m => m.id === aiMsgId);
                                     if (aiIdx !== -1) { next[aiIdx].translation = meta.translation; next[aiIdx].content = fullContent; }
-                                    if (meta.promo) next.push({ role: 'promo', content: meta.promo, id: Date.now() + 2 });
                                     if (meta.user_correction) { const lastUserIdx = next.findLastIndex(m => m.role === 'user'); if (lastUserIdx !== -1) next[lastUserIdx].correction = meta.user_correction; }
                                     return next;
                                 });
                                 setSuggestions(meta.suggestions || []);
                             } catch(e) {}
                             setLoading(false); break; 
-                        } else if (done) break;
+                        } else if (done) { break; }
                     }
                 } catch(e) { setLoading(false); } finally { fetchCredits(); }
             };
@@ -560,7 +621,8 @@
             const onSend = (txt) => { if (!txt.trim() || loading) return; const next = [...messages, { role: 'user', content: txt, id: Date.now() }]; setMessages(next); setInput(''); triggerAI(next.map(m=>({role:m.role, content:m.content}))); };
             
             const startAnalysis = async (mode, remember = false, overrideTxt = null, overrideId = null) => {
-                const pendingId = overrideId || analysisModal.pendingId; const pendingTxt = overrideTxt || analysisModal.pendingTxt;
+                const pendingId = overrideId || analysisModal.pendingId;
+                const pendingTxt = overrideTxt || analysisModal.pendingTxt;
                 if (remember) setActiveExplainMode(mode);
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
                 setAnalysisLoading(pendingId); setAnalysisModal(prev => ({ ...prev, isOpen: true, loading: true, pendingId, pendingTxt, content: '' }));
@@ -577,6 +639,8 @@
                 else setAnalysisModal({ isOpen: true, content: '', loading: false, pendingId: id, pendingTxt: txt });
             };
 
+            const clearHistory = () => { setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup'); setActiveExplainMode(null); };
+
             const speakText = (text, id) => {
                 if (speakingId === id) { audioRef.current.pause(); setSpeakingId(null); return; }
                 setSpeakingId(id);
@@ -584,29 +648,26 @@
                 audioRef.current.play().catch(() => setSpeakingId(null));
             };
 
-            useEffect(() => {
-                if (!token && tg?.initData) {
-                    fetch(`${API_BASE}/auth/telegram`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: tg.initData }) })
-                    .then(r => r.json()).then(d => { if (d.access_token) { localStorage.setItem('lingvo_token', d.access_token); setToken(d.access_token); setCredits(d.credits); } });
-                } else if (token) fetchCredits();
-            }, [token]);
-
+            if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
+            if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
+            
             return (
                 <>
                     {step === 'setup' ? (
                         <SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />
                     ) : (
-                        <ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={() => { setMessages([]); setStep('setup'); }} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} onSpeak={speakText} speakingId={speakingId} />
+                        <ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} onSpeak={speakText} speakingId={speakingId} />
                     )}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
-                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={fetchCredits} />}
+                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => fetchCredits()} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
                     <OnboardingModal isOpen={isHintOpen} onClose={() => setIsHintOpen(false)} />
-                    <LanguageHintModal isOpen={isLangHintOpen} onClose={() => { setIsLangHintOpen(false); localStorage.setItem('lingvo_lang_hint_seen', 'true'); }} />
+                    <LanguageHintModal isOpen={isLangHintOpen} onClose={() => setIsLangHintOpen(false)} />
                 </>
             );
         }
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
