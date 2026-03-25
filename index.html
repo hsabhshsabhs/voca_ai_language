@@ -43,7 +43,7 @@
         html, body, #root { height: 100%; margin: 0; padding: 0; background-color: #050508; color: #f4f4f5; }
         body { font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
         
-        /* ЦЕНТРИРОВАНИЕ НА ПК (Мобильный интерфейс) */
+        /* ЦЕНТРИРОВАНИЕ НА ПК */
         #root { display: flex; justify-content: center; align-items: center; width: 100vw; height: 100dvh; background: #050508; }
 
         .app-layout { 
@@ -92,7 +92,6 @@
         .bubble.user { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; margin-left: auto; border-bottom-right-radius: 0.375rem; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3); }
         .bubble.ai { background: #1a1a24; color: #f4f4f5; border-bottom-left-radius: 0.375rem; border: 1px solid #2a2a3e; align-self: flex-start; }
         
-        /* КНОПКА "?" (Разбор фразы) */
         .bubble-side-actions { position: absolute; top: 0; display: flex; gap: 6px; z-index: 20; }
         .bubble.ai .bubble-side-actions { right: -42px; }
         .bubble.user .bubble-side-actions { left: -42px; }
@@ -102,7 +101,6 @@
         .explain-btn.disabled { opacity: 0.2 !important; cursor: default !important; pointer-events: none; }
         .explain-btn.loading { animation: rotate 1s linear infinite; }
         
-        /* КНОПКА ОЗВУЧКИ (В конце текста) */
         .speak-btn-inline { 
             display: inline-flex; 
             align-items: center; 
@@ -158,7 +156,6 @@
         .correction-panel .corrected { color: #22c55e; font-weight: 600; }
         .correction-panel .explanation { color: #a1a1aa; margin-top: 0.25rem; font-size: 0.75rem; font-style: italic; }
         
-        /* СТИЛИ РАЗБОРА ФРАЗЫ */
         .analysis-modal { background: #0a0a0f; width: 100%; max-width: 360px; max-height: 80vh; border-radius: 2rem; border: 1px solid #1f1f2e; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; }
         .analysis-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #1f1f2e; background: #111118; }
         .analysis-modal-content { flex: 1; overflow-y: auto; line-height: 1.7; }
@@ -246,9 +243,7 @@
                 if (rewardAnim) {
                     setDisplayCredits(credits - 15);
                     setTimeout(() => {
-                        let start = credits - 15;
-                        const end = credits;
-                        setIsPulsing(true);
+                        let start = credits - 15; const end = credits; setIsPulsing(true);
                         const interval = setInterval(() => {
                             if (start < end) { start++; setDisplayCredits(start); } 
                             else { clearInterval(interval); setTimeout(() => setIsPulsing(false), 500); }
@@ -366,14 +361,14 @@
                 setLoading(true);
                 try {
                     const res = await fetch(`${API_BASE}/create-invoice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) });
-                    const data = await res.json();
-                    if (data.invoice_link) { tg.openInvoice(data.invoice_link, (status) => { if (status === 'paid') { onPurchaseSuccess(); onClose(); } }); }
-                } catch (e) { alert("Ошибка"); } finally { setLoading(false); }
+                    const d = await res.json();
+                    if (d.invoice_link) { tg.openInvoice(d.invoice_link, (status) => { if (status === 'paid') { onPurchaseSuccess(); onClose(); } }); }
+                } catch (e) {} finally { setLoading(false); }
             };
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content" onClick={e=>e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full transition-colors text-white"><Icons.X /></button></div>
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold font-display text-white">Магазин Stars</h2><button onClick={onClose} className="p-2 hover:bg-surfaceHover rounded-full text-white"><Icons.X /></button></div>
                         <div className="space-y-3 mb-8">
                             {packages.map((p, i) => (
                                 <button key={i} onClick={() => buy(p.stars)} disabled={loading} className="w-full p-4 bg-surface border border-border rounded-xl flex items-center justify-between hover:border-accent transition-all active:scale-95">
@@ -383,11 +378,28 @@
                             ))}
                         </div>
                         <div className="pt-6 border-t border-border">
-                            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-2 text-center">Партнерская программа</h3>
                             <button onClick={inviteFriend} className="w-full p-4 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center gap-3 text-accent font-bold hover:bg-accent/20 transition-all active:scale-95">
                                 <Icons.UserPlus /> Стать партнером
                             </button>
                         </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function OnboardingModal({ isOpen, onClose }) {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay">
+                    <div className="modal-content text-center">
+                        <h2 className="text-xl font-bold mb-6 gradient-text font-display">Как пользоваться?</h2>
+                        <div className="space-y-6 text-sm text-left mb-8">
+                            <div className="flex items-start gap-4">
+                                <div className="explain-btn !static !m-0 !shrink-0 flex-none"><Icons.Help /></div>
+                                <p className="leading-relaxed">Нажми на этот значок рядом с фразой для <b>полного разбора</b> грамматики.</p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="btn-primary">Понятно!</button>
                     </div>
                 </div>
             );
@@ -438,29 +450,20 @@
                                                     <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(mid, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === mid ? 'loading' : ''}`}>?</div>
                                                 </div>
                                             )}
-                                            
                                             <div className="font-medium">
-                                                {isAiLoading ? (
-                                                    <div className="dot-pulse"><span></span><span></span><span></span></div>
-                                                ) : (
+                                                {isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : (
                                                     <div className="inline">
                                                         <span className="whitespace-pre-wrap">{m.content}</span>
                                                         <button onClick={(e) => { e.stopPropagation(); onSpeak(m.content, mid); }} className={`speak-btn-inline ${speakingId === mid ? 'speaking' : ''}`}><Icons.Volume /></button>
                                                     </div>
                                                 )}
                                             </div>
-
                                             {m.role === 'user' && m.correction && (
                                                 <div className="correction-panel"><div className="text-[10px] uppercase font-bold text-muted mb-1">Репетитор советует:</div><div className="corrected font-bold mb-1">{m.correction.corrected}</div>{m.correction.explanation && <div className="explanation italic opacity-90">{m.correction.explanation}</div>}</div>
                                             )}
-
                                             {!isAiLoading && m.role === 'assistant' && m.translation && (
                                                 <div className="bubble-footer">
-                                                    {!visTrans[mid] ? (
-                                                        <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div>
-                                                    ) : (
-                                                        <div className="text-muted text-sm italic">{m.translation}</div>
-                                                    )}
+                                                    {!visTrans[mid] ? <div className="show-trans-btn" onClick={()=>setVisTrans({...visTrans,[mid]:true})}><Icons.Eye />Перевод</div> : <div className="text-muted text-sm italic">{m.translation}</div>}
                                                 </div>
                                             )}
                                         </>
@@ -493,6 +496,7 @@
             const [analysisModal, setAnalysisModal] = useState({ isOpen: false, content: '', loading: false, pendingId: null, pendingTxt: null });
             const [isShopOpen, setIsShopOpen] = useState(false);
             const [isLowBalanceOpen, setIsLowBalanceOpen] = useState(false);
+            const [isHintOpen, setIsHintOpen] = useState(false);
             const [isLangHintOpen, setIsLangHintOpen] = useState(false);
             const [activeExplainMode, setActiveExplainMode] = useState(null);
             const [speakingId, setSpeakingId] = useState(null);
@@ -500,20 +504,12 @@
             const audioRef = useRef(new Audio());
 
             useEffect(() => {
+                if (!localStorage.getItem('lingvo_hint_seen')) { setIsHintOpen(true); localStorage.setItem('lingvo_hint_seen', 'true'); }
                 if (!localStorage.getItem('lingvo_lang_hint_seen')) setTimeout(() => setIsLangHintOpen(true), 1500);
                 audioRef.current.onended = () => setSpeakingId(null);
             }, []);
 
             useEffect(() => { localStorage.setItem('lingvo_lang', selectedLang); }, [selectedLang]);
-
-            const authenticate = async () => {
-                if (!tg?.initData) return;
-                try {
-                    const r = await fetch(`${API_BASE}/auth/telegram`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: tg.initData }) });
-                    const d = await r.json();
-                    if (d.access_token) { localStorage.setItem('lingvo_token', d.access_token); setToken(d.access_token); setCredits(d.credits); }
-                } catch (e) {}
-            };
 
             const fetchCredits = async () => {
                 if (!token) return;
@@ -527,8 +523,6 @@
                 } catch(e) {}
             };
 
-            useEffect(() => { if (!token) authenticate(); else fetchCredits(); }, [token]);
-
             const triggerAI = async (hist) => {
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
                 setLoading(true); setSuggestions([]);
@@ -536,10 +530,8 @@
                 setMessages(prev => [...prev, { role: 'assistant', content: '', id: aiMsgId }]);
                 try {
                     const res = await fetch(`${API_BASE}/chat_stream?token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character, situation, lang: selectedLang, history: hist }) });
-                    const reader = res.body.getReader();
-                    const decoder = new TextDecoder();
-                    let fullContent = "";
-                    let streamBuffer = ""; 
+                    const reader = res.body.getReader(); const decoder = new TextDecoder();
+                    let fullContent = ""; let streamBuffer = ""; 
                     while (true) {
                         const { value, done } = await reader.read();
                         const chunk = value ? decoder.decode(value, { stream: true }) : "";
@@ -553,14 +545,14 @@
                                     const next = [...prev];
                                     const aiIdx = next.findIndex(m => m.id === aiMsgId);
                                     if (aiIdx !== -1) { next[aiIdx].translation = meta.translation; next[aiIdx].content = fullContent; }
-                                    if (meta.promo) { next.push({ role: 'promo', content: meta.promo, id: Date.now() + 2 }); }
+                                    if (meta.promo) next.push({ role: 'promo', content: meta.promo, id: Date.now() + 2 });
                                     if (meta.user_correction) { const lastUserIdx = next.findLastIndex(m => m.role === 'user'); if (lastUserIdx !== -1) next[lastUserIdx].correction = meta.user_correction; }
                                     return next;
                                 });
                                 setSuggestions(meta.suggestions || []);
                             } catch(e) {}
                             setLoading(false); break; 
-                        } else if (done) { break; }
+                        } else if (done) break;
                     }
                 } catch(e) { setLoading(false); } finally { fetchCredits(); }
             };
@@ -568,8 +560,7 @@
             const onSend = (txt) => { if (!txt.trim() || loading) return; const next = [...messages, { role: 'user', content: txt, id: Date.now() }]; setMessages(next); setInput(''); triggerAI(next.map(m=>({role:m.role, content:m.content}))); };
             
             const startAnalysis = async (mode, remember = false, overrideTxt = null, overrideId = null) => {
-                const pendingId = overrideId || analysisModal.pendingId;
-                const pendingTxt = overrideTxt || analysisModal.pendingTxt;
+                const pendingId = overrideId || analysisModal.pendingId; const pendingTxt = overrideTxt || analysisModal.pendingTxt;
                 if (remember) setActiveExplainMode(mode);
                 if (credits < 1) { setIsLowBalanceOpen(true); return; }
                 setAnalysisLoading(pendingId); setAnalysisModal(prev => ({ ...prev, isOpen: true, loading: true, pendingId, pendingTxt, content: '' }));
@@ -593,8 +584,13 @@
                 audioRef.current.play().catch(() => setSpeakingId(null));
             };
 
-            if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
-            
+            useEffect(() => {
+                if (!token && tg?.initData) {
+                    fetch(`${API_BASE}/auth/telegram`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: tg.initData }) })
+                    .then(r => r.json()).then(d => { if (d.access_token) { localStorage.setItem('lingvo_token', d.access_token); setToken(d.access_token); setCredits(d.credits); } });
+                } else if (token) fetchCredits();
+            }, [token]);
+
             return (
                 <>
                     {step === 'setup' ? (
@@ -603,8 +599,9 @@
                         <ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={() => { setMessages([]); setStep('setup'); }} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} onSpeak={speakText} speakingId={speakingId} />
                     )}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
-                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => fetchCredits()} />}
+                    {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={fetchCredits} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
+                    <OnboardingModal isOpen={isHintOpen} onClose={() => setIsHintOpen(false)} />
                     <LanguageHintModal isOpen={isLangHintOpen} onClose={() => { setIsLangHintOpen(false); localStorage.setItem('lingvo_lang_hint_seen', 'true'); }} />
                 </>
             );
