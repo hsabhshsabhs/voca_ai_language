@@ -78,8 +78,10 @@
         .explain-btn { width: 30px; height: 30px; background: rgba(251, 191, 36, 0.1); color: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; border: 1px solid rgba(251, 191, 36, 0.3); transition: all 0.2s; cursor: pointer; }
         .explain-btn.disabled { opacity: 0.2 !important; cursor: default !important; pointer-events: none; }
         .bubble .explain-btn { position: absolute; right: -40px; top: 5px; }
+        .bubble .speak-btn { position: absolute; right: -40px; top: 40px; width: 30px; height: 30px; background: rgba(99, 102, 241, 0.1); color: #818cf8; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(99, 102, 241, 0.3); transition: all 0.2s; cursor: pointer; }
         .bubble.user .explain-btn { background: rgba(99, 102, 241, 0.1); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); left: -40px; right: auto; }
-        .explain-btn:not(.disabled):hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(251, 191, 36, 0.2); }
+        .bubble.user .speak-btn { left: -40px; right: auto; }
+        .explain-btn:not(.disabled):hover, .speak-btn:hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
         .explain-btn.loading { animation: rotate 1s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
@@ -418,7 +420,7 @@
             );
         }
 
-        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang, onSpeak }) {
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
             useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
@@ -447,7 +449,10 @@
                                     ) : (
                                         <>
                                             {m.content && (
-                                                <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(m.id, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}>?</div>
+                                                <>
+                                                    <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(m.id, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}>?</div>
+                                                    <div onClick={() => onSpeak(m.content)} className="speak-btn"><Icons.Volume /></div>
+                                                </>
                                             )}
                                             <div className="whitespace-pre-wrap font-medium">{isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}</div>
                                             {m.role === 'user' && m.correction && (
@@ -639,12 +644,21 @@
 
             const clearHistory = () => { setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup'); setActiveExplainMode(null); };
 
+            const speakText = (text) => {
+                if (!window.speechSynthesis) return;
+                window.speechSynthesis.cancel();
+                const ut = new SpeechSynthesisUtterance(text);
+                const langMap = { 'English': 'en-US', 'German': 'de-DE', 'French': 'fr-FR', 'Spanish': 'es-ES', 'Italian': 'it-IT', 'Japanese': 'ja-JP', 'Chinese': 'zh-CN', 'Korean': 'ko-KR' };
+                ut.lang = langMap[selectedLang] || 'en-US';
+                window.speechSynthesis.speak(ut);
+            };
+
             if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
             if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
             
             return (
                 <>
-                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} />)}
+                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} onSpeak={speakText} />)}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
                     {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
