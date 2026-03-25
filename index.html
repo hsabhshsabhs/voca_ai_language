@@ -78,10 +78,8 @@
         .explain-btn { width: 30px; height: 30px; background: rgba(251, 191, 36, 0.1); color: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; border: 1px solid rgba(251, 191, 36, 0.3); transition: all 0.2s; cursor: pointer; }
         .explain-btn.disabled { opacity: 0.2 !important; cursor: default !important; pointer-events: none; }
         .bubble .explain-btn { position: absolute; right: -40px; top: 5px; }
-        .bubble .speak-btn { position: absolute; right: -40px; top: 40px; width: 30px; height: 30px; background: rgba(99, 102, 241, 0.1); color: #818cf8; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(99, 102, 241, 0.3); transition: all 0.2s; cursor: pointer; }
         .bubble.user .explain-btn { background: rgba(99, 102, 241, 0.1); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); left: -40px; right: auto; }
-        .bubble.user .speak-btn { left: -40px; right: auto; }
-        .explain-btn:not(.disabled):hover, .speak-btn:hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
+        .explain-btn:not(.disabled):hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(251, 191, 36, 0.2); }
         .explain-btn.loading { animation: rotate 1s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
@@ -189,9 +187,8 @@
             Back: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
             Gem: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="m12 22 4-13-3-6"/><path d="m12 22-4-13 3-6"/><path d="M2 9h20"/></svg>,
             X: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-            Sparkles: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>,
+            Sparkles: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>,
             UserPlus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
-            Volume: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>,
         };
 
         const inviteFriend = () => {
@@ -341,7 +338,7 @@
             const buy = async (amount) => {
                 setLoading(true);
                 try {
-                    const res = await fetch(`${API_BASE}/create-invoice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) });
+                    const res = await fetch(`${API_BASE}/create-invoice`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ amount }) });
                     const data = await res.json();
                     if (data.invoice_link) { tg.openInvoice(data.invoice_link, (status) => { if (status === 'paid') { onPurchaseSuccess(); onClose(); } }); }
                 } catch (e) { alert("Ошибка"); } finally { setLoading(false); }
@@ -421,7 +418,7 @@
             );
         }
 
-        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang, onSpeak }) {
+        function ChatScreen({ messages, loading, suggestions, input, setInput, onSend, onBack, credits, onShopOpen, onAnalyze, analysisLoading, setAnalysisModal, lang }) {
             const scrollRef = useRef();
             const [visTrans, setVisTrans] = useState({});
             useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
@@ -450,10 +447,7 @@
                                     ) : (
                                         <>
                                             {m.content && (
-                                                <>
-                                                    <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(m.id, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}>?</div>
-                                                    <div onClick={() => onSpeak(m.content)} className="speak-btn"><Icons.Volume /></div>
-                                                </>
+                                                <div onClick={() => { if (loading || isAiLoading) return; m.analysis ? setAnalysisModal({ isOpen: true, content: m.analysis, loading: false }) : onAnalyze(m.id, m.content); }} className={`explain-btn ${(loading || isAiLoading) ? 'disabled' : ''} ${analysisLoading === m.id ? 'loading' : ''}`}>?</div>
                                             )}
                                             <div className="whitespace-pre-wrap font-medium">{isAiLoading ? <div className="dot-pulse"><span></span><span></span><span></span></div> : m.content}</div>
                                             {m.role === 'user' && m.correction && (
@@ -645,21 +639,12 @@
 
             const clearHistory = () => { setMessages([]); setSuggestions([]); setCharacter(''); setSituation(''); setStep('setup'); setActiveExplainMode(null); };
 
-            const speakText = (text) => {
-                if (!window.speechSynthesis) return;
-                window.speechSynthesis.cancel();
-                const ut = new SpeechSynthesisUtterance(text);
-                const langMap = { 'English': 'en-US', 'German': 'de-DE', 'French': 'fr-FR', 'Spanish': 'es-ES', 'Italian': 'it-IT', 'Japanese': 'ja-JP', 'Chinese': 'zh-CN', 'Korean': 'ko-KR' };
-                ut.lang = langMap[selectedLang] || 'en-US';
-                window.speechSynthesis.speak(ut);
-            };
-
             if (!token && tg?.initData) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display text-xl">Авторизация...</div>;
             if (!token) return <div className="h-screen flex items-center justify-center bg-background text-white p-10 text-center font-display">Open in Telegram</div>;
             
             return (
                 <>
-                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} onSpeak={speakText} />)}
+                    {step === 'setup' ? (<SetupScreen onStart={()=> {setStep('chat'); triggerAI([]);}} character={character} setCharacter={setCharacter} situation={situation} setSituation={setSituation} credits={credits} onShopOpen={()=>setIsShopOpen(true)} rewardAnim={rewardAnim} selectedLang={selectedLang} setSelectedLang={setSelectedLang} />) : (<ChatScreen messages={messages} loading={loading} suggestions={suggestions} input={input} setInput={setInput} onSend={onSend} onBack={clearHistory} credits={credits} onShopOpen={()=>setIsShopOpen(true)} onAnalyze={onAnalyzeClick} analysisLoading={analysisLoading} setAnalysisModal={setAnalysisModal} lang={selectedLang} />)}
                     <AnalysisModal {...analysisModal} onClose={()=>setAnalysisModal(prev => ({...prev, isOpen:false}))} onModeSelect={startAnalysis} />
                     {isShopOpen && <ShopModal onClose={()=>setIsShopOpen(false)} token={token} onPurchaseSuccess={() => { fetch(`${API_BASE}/me`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.json()).then(d => setCredits(d.credits)); }} />}
                     <LowBalanceModal isOpen={isLowBalanceOpen} onClose={() => setIsLowBalanceOpen(false)} onShopOpen={() => { setIsLowBalanceOpen(false); setIsShopOpen(true); }} />
