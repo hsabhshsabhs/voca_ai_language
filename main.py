@@ -134,6 +134,10 @@ async def auth_telegram(req: dict, db: Session = Depends(get_db)):
         db.add(user); db.commit(); db.refresh(user)
     return {"access_token": create_access_token({"sub": str(tg_id)}), "credits": user.credits}
 
+import edge_tts
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse
+import io
+
 @app.get("/me")
 async def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Daily reward logic
@@ -154,6 +158,30 @@ async def me(user: User = Depends(get_current_user), db: Session = Depends(get_d
         "credits": user.credits,
         "reward_given": reward_given
     }
+
+@app.get("/tts")
+async def tts(text: str, lang: str = "English"):
+    # Voice mapping for Edge TTS (High quality free neural voices)
+    voice_map = {
+        "English": "en-US-AriaNeural",
+        "German": "de-DE-KatjaNeural",
+        "French": "fr-FR-DeniseNeural",
+        "Spanish": "es-ES-ElviraNeural",
+        "Italian": "it-IT-ElsaNeural",
+        "Japanese": "ja-JP-NanamiNeural",
+        "Chinese": "zh-CN-XiaoxiaoNeural",
+        "Korean": "ko-KR-SunHiNeural"
+    }
+    voice = voice_map.get(lang, "en-US-AriaNeural")
+    
+    communicate = edge_tts.Communicate(text, voice)
+    audio_data = io.BytesIO()
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data.write(chunk["data"])
+    
+    audio_data.seek(0)
+    return StreamingResponse(audio_data, media_type="audio/mpeg")
 
 @app.post("/explain")
 async def explain(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
